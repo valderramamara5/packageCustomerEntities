@@ -4,4 +4,21 @@
 
 require_once __DIR__ . '/composer/autoload_real.php';
 
+use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\ORMSetup;
+
+$paths = array("/path/to/entity-files");
+$isDevMode = false;
+
+// the connection configuration
+$dbParams = array(
+    'driver'   => 'pdo_mysql',
+    'user'     => 'root',
+    'password' => '',
+    'dbname'   => 'foo',
+);
+
+$config = ORMSetup::createAnnotationMetadataConfiguration($paths, $isDevMode);
+$entityManager = EntityManager::create($dbParams, $config);
+
 return ComposerAutoloaderInit6807604bdd625cfe0c13478aedfd05e9::getLoader();
