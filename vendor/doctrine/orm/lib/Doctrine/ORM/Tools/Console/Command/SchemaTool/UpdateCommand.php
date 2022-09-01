@@ -24,7 +24,10 @@ class UpdateCommand extends AbstractCommand
     /** @var string */
     protected $name = 'orm:schema-tool:update';
 
-    protected function configure(): void
+    /**
+     * {@inheritdoc}
+     */
+    protected function configure()
     {
         $this->setName($this->name)
              ->setDescription('Executes (or dumps) the SQL needed to update the database schema to match the current mapping metadata')
@@ -61,13 +64,14 @@ by the ORM, you can use a DBAL functionality to filter the tables and sequences 
 on a global level:
 
     $config->setFilterSchemaAssetsExpression($regexp);
-EOT);
+EOT
+             );
     }
 
     /**
      * {@inheritdoc}
      */
-    protected function executeSchemaCommand(InputInterface $input, OutputInterface $output, SchemaTool $schemaTool, array $metadatas, SymfonyStyle $ui): int
+    protected function executeSchemaCommand(InputInterface $input, OutputInterface $output, SchemaTool $schemaTool, array $metadatas, SymfonyStyle $ui)
     {
         // Defining if update is complete or not (--complete not defined means $saveMode = true)
         $saveMode = ! $input->getOption('complete');
@@ -115,7 +119,7 @@ EOT);
                 '',
                 'Use the incremental update to detect changes during development and use',
                 'the SQL DDL provided to manually update your database in production.',
-            ],
+            ]
         );
 
         $ui->text(
@@ -126,7 +130,7 @@ EOT);
                 '',
                 sprintf('    <info>%s --force</info> to execute the command', $this->getName()),
                 sprintf('    <info>%s --dump-sql</info> to dump the SQL statements to the screen', $this->getName()),
-            ],
+            ]
         );
 
         return 1;

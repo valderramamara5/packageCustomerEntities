@@ -23,7 +23,12 @@ use function is_string;
  */
 class OneToManyPersister extends AbstractCollectionPersister
 {
-    public function delete(PersistentCollection $collection): void
+    /**
+     * {@inheritdoc}
+     *
+     * @return int|null
+     */
+    public function delete(PersistentCollection $collection)
     {
         // The only valid case here is when you have weak entities. In this
         // scenario, you have @OneToMany with orphanRemoval=true, and replacing
@@ -39,12 +44,15 @@ class OneToManyPersister extends AbstractCollectionPersister
 
         $targetClass = $this->em->getClassMetadata($mapping['targetEntity']);
 
-        $targetClass->isInheritanceTypeJoined()
+        return $targetClass->isInheritanceTypeJoined()
             ? $this->deleteJoinedEntityCollection($collection)
             : $this->deleteEntityCollection($collection);
     }
 
-    public function update(PersistentCollection $collection): void
+    /**
+     * {@inheritdoc}
+     */
+    public function update(PersistentCollection $collection)
     {
         // This can never happen. One to many can only be inverse side.
         // For owning side one to many, it is required to have a join table,
@@ -52,7 +60,10 @@ class OneToManyPersister extends AbstractCollectionPersister
         return;
     }
 
-    public function get(PersistentCollection $collection, mixed $index): mixed
+    /**
+     * {@inheritdoc}
+     */
+    public function get(PersistentCollection $collection, $index)
     {
         $mapping = $collection->getMapping();
 
@@ -71,11 +82,14 @@ class OneToManyPersister extends AbstractCollectionPersister
             $mapping,
             [],
             null,
-            1,
+            1
         );
     }
 
-    public function count(PersistentCollection $collection): int
+    /**
+     * {@inheritdoc}
+     */
+    public function count(PersistentCollection $collection)
     {
         $mapping   = $collection->getMapping();
         $persister = $this->uow->getEntityPersister($mapping['targetEntity']);
@@ -91,7 +105,7 @@ class OneToManyPersister extends AbstractCollectionPersister
     /**
      * {@inheritdoc}
      */
-    public function slice(PersistentCollection $collection, int $offset, int|null $length = null): array
+    public function slice(PersistentCollection $collection, $offset, $length = null)
     {
         $mapping   = $collection->getMapping();
         $persister = $this->uow->getEntityPersister($mapping['targetEntity']);
@@ -99,7 +113,10 @@ class OneToManyPersister extends AbstractCollectionPersister
         return $persister->getOneToManyCollection($mapping, $collection->getOwner(), $offset, $length);
     }
 
-    public function containsKey(PersistentCollection $collection, mixed $key): bool
+    /**
+     * {@inheritdoc}
+     */
+    public function containsKey(PersistentCollection $collection, $key)
     {
         $mapping = $collection->getMapping();
 
@@ -120,7 +137,10 @@ class OneToManyPersister extends AbstractCollectionPersister
         return (bool) $persister->count($criteria);
     }
 
-    public function contains(PersistentCollection $collection, object $element): bool
+     /**
+      * {@inheritdoc}
+      */
+    public function contains(PersistentCollection $collection, $element)
     {
         if (! $this->isValidEntityState($element)) {
             return false;
@@ -140,12 +160,14 @@ class OneToManyPersister extends AbstractCollectionPersister
     /**
      * {@inheritdoc}
      */
-    public function loadCriteria(PersistentCollection $collection, Criteria $criteria): array
+    public function loadCriteria(PersistentCollection $collection, Criteria $criteria)
     {
         throw new BadMethodCallException('Filtering a collection by Criteria is not supported by this CollectionPersister.');
     }
 
-    /** @throws DBALException */
+    /**
+     * @throws DBALException
+     */
     private function deleteEntityCollection(PersistentCollection $collection): int
     {
         $mapping     = $collection->getMapping();
@@ -189,7 +211,6 @@ class OneToManyPersister extends AbstractCollectionPersister
 
         foreach ($idColumnNames as $idColumnName) {
             $columnDefinitions[$idColumnName] = [
-                'name'    => $idColumnName,
                 'notnull' => true,
                 'type'    => Type::getType(PersisterHelper::getTypeOfColumn($idColumnName, $rootClass, $this->em)),
             ];
@@ -203,7 +224,7 @@ class OneToManyPersister extends AbstractCollectionPersister
         // 2) Build insert table records into temporary table
         $query = $this->em->createQuery(
             ' SELECT t0.' . implode(', t0.', $rootClass->getIdentifierFieldNames())
-            . ' FROM ' . $targetClass->name . ' t0 WHERE t0.' . $mapping['mappedBy'] . ' = :owner',
+            . ' FROM ' . $targetClass->name . ' t0 WHERE t0.' . $mapping['mappedBy'] . ' = :owner'
         )->setParameter('owner', $collection->getOwner());
 
         $sql = $query->getSQL();

@@ -20,7 +20,10 @@ use function sprintf;
  */
 class QueryRegionCommand extends AbstractEntityManagerCommand
 {
-    protected function configure(): void
+    /**
+     * {@inheritdoc}
+     */
+    protected function configure()
     {
         $this->setName('orm:clear-cache:region:query')
              ->setDescription('Clear a second-level cache query region')
@@ -51,10 +54,16 @@ Alternatively, if you want to flush the configured cache provider use this comma
 
 Finally, be aware that if <info>--flush</info> option is passed,
 not all cache providers are able to flush entries, because of a limitation of its execution nature.
-EOT);
+EOT
+             );
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
+    /**
+     * {@inheritdoc}
+     *
+     * @return int
+     */
+    protected function execute(InputInterface $input, OutputInterface $output)
     {
         $ui = new SymfonyStyle($input, $output);
 
@@ -78,8 +87,8 @@ EOT);
             $ui->comment(
                 sprintf(
                     'Flushing cache provider configured for second-level cache query region named <info>"%s"</info>',
-                    $name,
-                ),
+                    $name
+                )
             );
 
             return 0;

@@ -15,9 +15,15 @@ use Doctrine\Common\Annotations\Annotation\NamedArgumentConstructor;
 #[Attribute(Attribute::TARGET_PROPERTY)]
 final class Embedded implements Annotation
 {
-    public function __construct(
-        public string|null $class = null,
-        public string|bool|null $columnPrefix = null,
-    ) {
+    /** @var string|null */
+    public $class;
+
+    /** @var string|bool|null */
+    public $columnPrefix;
+
+    public function __construct(?string $class = null, $columnPrefix = null)
+    {
+        $this->class        = $class;
+        $this->columnPrefix = $columnPrefix;
     }
 }

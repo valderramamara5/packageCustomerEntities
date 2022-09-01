@@ -14,6 +14,7 @@ abstract class CacheKey
      * Unique identifier
      *
      * @readonly Public only for performance reasons, it should be considered immutable.
+     * @var string
      */
-    public string $hash;
+    public $hash;
 }

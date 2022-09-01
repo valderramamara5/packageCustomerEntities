@@ -34,7 +34,9 @@ abstract class AbstractSqlExecutor
         return $this->_sqlStatements;
     }
 
-    /** @return void */
+    /**
+     * @return void
+     */
     public function setQueryCacheProfile(QueryCacheProfile $qcp)
     {
         $this->queryCacheProfile = $qcp;

@@ -14,10 +14,10 @@ use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Mapping\MappingException;
 use Doctrine\Persistence\Mapping\ClassMetadata as PersistenceClassMetadata;
 use Doctrine\Persistence\Mapping\Driver\ColocatedMappingDriver;
-use Doctrine\Persistence\Mapping\Driver\MappingDriver;
 use ReflectionClass;
 use ReflectionMethod;
 use ReflectionProperty;
+use UnexpectedValueException;
 
 use function assert;
 use function class_exists;
@@ -25,12 +25,13 @@ use function constant;
 use function count;
 use function defined;
 use function get_class;
+use function is_array;
 use function is_numeric;
 
 /**
  * The AnnotationDriver reads the mapping metadata from docblock annotations.
  */
-class AnnotationDriver implements MappingDriver
+class AnnotationDriver extends CompatibilityAnnotationDriver
 {
     use ColocatedMappingDriver;
 
@@ -87,7 +88,6 @@ class AnnotationDriver implements MappingDriver
                 continue;
             }
 
-            unset($classAnnotations[$key]);
             $classAnnotations[get_class($annot)] = $annot;
         }
 
@@ -143,7 +143,7 @@ class AnnotationDriver implements MappingDriver
                 ) {
                     throw MappingException::invalidIndexConfiguration(
                         $className,
-                        (string) ($indexAnnot->name ?? count($primaryTable['indexes'])),
+                        (string) ($indexAnnot->name ?? count($primaryTable['indexes']))
                     );
                 }
 
@@ -182,7 +182,7 @@ class AnnotationDriver implements MappingDriver
                 ) {
                     throw MappingException::invalidUniqueConstraintConfiguration(
                         $className,
-                        (string) ($uniqueConstraintAnnot->name ?? count($primaryTable['uniqueConstraints'])),
+                        (string) ($uniqueConstraintAnnot->name ?? count($primaryTable['uniqueConstraints']))
                     );
                 }
 
@@ -213,6 +213,22 @@ class AnnotationDriver implements MappingDriver
             ];
 
             $metadata->enableCache($cacheMap);
+        }
+
+        // Evaluate NamedNativeQueries annotation
+        if (isset($classAnnotations[Mapping\NamedNativeQueries::class])) {
+            $namedNativeQueriesAnnot = $classAnnotations[Mapping\NamedNativeQueries::class];
+
+            foreach ($namedNativeQueriesAnnot->value as $namedNativeQuery) {
+                $metadata->addNamedNativeQuery(
+                    [
+                        'name'              => $namedNativeQuery->name,
+                        'query'             => $namedNativeQuery->query,
+                        'resultClass'       => $namedNativeQuery->resultClass,
+                        'resultSetMapping'  => $namedNativeQuery->resultSetMapping,
+                    ]
+                );
+            }
         }
 
         // Evaluate SqlResultSetMappings annotation
@@ -250,7 +266,29 @@ class AnnotationDriver implements MappingDriver
                         'name'          => $resultSetMapping->name,
                         'entities'      => $entities,
                         'columns'       => $columns,
-                    ],
+                    ]
+                );
+            }
+        }
+
+        // Evaluate NamedQueries annotation
+        if (isset($classAnnotations[Mapping\NamedQueries::class])) {
+            $namedQueriesAnnot = $classAnnotations[Mapping\NamedQueries::class];
+
+            if (! is_array($namedQueriesAnnot->value)) {
+                throw new UnexpectedValueException('@NamedQueries should contain an array of @NamedQuery annotations.');
+            }
+
+            foreach ($namedQueriesAnnot->value as $namedQuery) {
+                if (! ($namedQuery instanceof Mapping\NamedQuery)) {
+                    throw new UnexpectedValueException('@NamedQueries should contain an array of @NamedQuery annotations.');
+                }
+
+                $metadata->addNamedQuery(
+                    [
+                        'name'  => $namedQuery->name,
+                        'query' => $namedQuery->query,
+                    ]
                 );
             }
         }
@@ -261,7 +299,7 @@ class AnnotationDriver implements MappingDriver
             assert($inheritanceTypeAnnot instanceof Mapping\InheritanceType);
 
             $metadata->setInheritanceType(
-                constant('Doctrine\ORM\Mapping\ClassMetadata::INHERITANCE_TYPE_' . $inheritanceTypeAnnot->value),
+                constant('Doctrine\ORM\Mapping\ClassMetadata::INHERITANCE_TYPE_' . $inheritanceTypeAnnot->value)
             );
 
             if ($metadata->inheritanceType !== ClassMetadata::INHERITANCE_TYPE_NONE) {
@@ -276,7 +314,7 @@ class AnnotationDriver implements MappingDriver
                             'type'             => $discrColumnAnnot->type ?: 'string',
                             'length'           => $discrColumnAnnot->length ?? 255,
                             'columnDefinition' => $discrColumnAnnot->columnDefinition,
-                        ],
+                        ]
                     );
                 } else {
                     $metadata->setDiscriminatorColumn(['name' => 'dtype', 'type' => 'string', 'length' => 255]);
@@ -323,7 +361,7 @@ class AnnotationDriver implements MappingDriver
                     [
                         'usage'  => (int) constant('Doctrine\ORM\Mapping\ClassMetadata::CACHE_USAGE_' . $cacheAnnot->usage),
                         'region' => $cacheAnnot->region,
-                    ],
+                    ]
                 );
             }
 
@@ -372,7 +410,7 @@ class AnnotationDriver implements MappingDriver
                             'sequenceName' => $seqGeneratorAnnot->sequenceName,
                             'allocationSize' => $seqGeneratorAnnot->allocationSize,
                             'initialValue' => $seqGeneratorAnnot->initialValue,
-                        ],
+                        ]
                     );
                 } else {
                     $customGeneratorAnnot = $this->reader->getPropertyAnnotation($property, Mapping\CustomIdGenerator::class);
@@ -380,7 +418,7 @@ class AnnotationDriver implements MappingDriver
                         $metadata->setCustomGeneratorDefinition(
                             [
                                 'class' => $customGeneratorAnnot->class,
-                            ],
+                            ]
                         );
                     }
                 }
@@ -390,7 +428,7 @@ class AnnotationDriver implements MappingDriver
                     $mapping,
                     $metadata,
                     $joinColumns,
-                    $className,
+                    $className
                 );
             }
         }
@@ -511,7 +549,7 @@ class AnnotationDriver implements MappingDriver
         array &$mapping,
         PersistenceClassMetadata $metadata,
         array $joinColumns,
-        string $className,
+        string $className
     ): void {
         $oneToOneAnnot = $this->reader->getPropertyAnnotation($property, Mapping\OneToOne::class);
         if ($oneToOneAnnot) {
@@ -801,7 +839,7 @@ class AnnotationDriver implements MappingDriver
             'doctrine/orm',
             'https://github.com/doctrine/orm/pull/9587',
             '%s is deprecated with no replacement',
-            __METHOD__,
+            __METHOD__
         );
 
         return $this->reader;
@@ -830,7 +868,7 @@ class AnnotationDriver implements MappingDriver
      *
      * @return AnnotationDriver
      */
-    public static function create($paths = [], AnnotationReader|null $reader = null)
+    public static function create($paths = [], ?AnnotationReader $reader = null)
     {
         if ($reader === null) {
             $reader = new AnnotationReader();

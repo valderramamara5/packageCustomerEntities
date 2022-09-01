@@ -24,11 +24,21 @@ use Doctrine\Persistence\Mapping\ClassMetadata;
  */
 class ProxyFactory extends AbstractProxyFactory
 {
-    /** The UnitOfWork this factory uses to retrieve persisters */
-    private readonly UnitOfWork $uow;
+    /** @var EntityManagerInterface The EntityManager this factory is bound to. */
+    private $em;
 
-    /** The IdentifierFlattener used for manipulating identifiers */
-    private readonly IdentifierFlattener $identifierFlattener;
+    /** @var UnitOfWork The UnitOfWork this factory uses to retrieve persisters */
+    private $uow;
+
+    /** @var string */
+    private $proxyNs;
+
+    /**
+     * The IdentifierFlattener used for manipulating identifiers
+     *
+     * @var IdentifierFlattener
+     */
+    private $identifierFlattener;
 
     /**
      * Initializes a new instance of the <tt>ProxyFactory</tt> class that is
@@ -41,22 +51,23 @@ class ProxyFactory extends AbstractProxyFactory
      *                                             values are constants of {@see AbstractProxyFactory}.
      * @psalm-param bool|AutogenerateMode $autoGenerate
      */
-    public function __construct(
-        private readonly EntityManagerInterface $em,
-        string $proxyDir,
-        private readonly string $proxyNs,
-        bool|int $autoGenerate = AbstractProxyFactory::AUTOGENERATE_NEVER,
-    ) {
+    public function __construct(EntityManagerInterface $em, $proxyDir, $proxyNs, $autoGenerate = AbstractProxyFactory::AUTOGENERATE_NEVER)
+    {
         $proxyGenerator = new ProxyGenerator($proxyDir, $proxyNs);
 
         $proxyGenerator->setPlaceholder('baseProxyInterface', Proxy::class);
         parent::__construct($proxyGenerator, $em->getMetadataFactory(), $autoGenerate);
 
+        $this->em                  = $em;
         $this->uow                 = $em->getUnitOfWork();
+        $this->proxyNs             = $proxyNs;
         $this->identifierFlattener = new IdentifierFlattener($this->uow, $em->getMetadataFactory());
     }
 
-    protected function skipClass(ClassMetadata $metadata): bool
+    /**
+     * {@inheritDoc}
+     */
+    protected function skipClass(ClassMetadata $metadata)
     {
         return $metadata->isMappedSuperclass
             || $metadata->isEmbeddedClass
@@ -66,7 +77,7 @@ class ProxyFactory extends AbstractProxyFactory
     /**
      * {@inheritDoc}
      */
-    protected function createProxyDefinition($className): ProxyDefinition
+    protected function createProxyDefinition($className)
     {
         $classMetadata   = $this->em->getClassMetadata($className);
         $entityPersister = $this->uow->getEntityPersister($className);
@@ -76,7 +87,7 @@ class ProxyFactory extends AbstractProxyFactory
             $classMetadata->getIdentifierFieldNames(),
             $classMetadata->getReflectionProperties(),
             $this->createInitializer($classMetadata, $entityPersister),
-            $this->createCloner($classMetadata, $entityPersister),
+            $this->createCloner($classMetadata, $entityPersister)
         );
     }
 
@@ -125,7 +136,7 @@ class ProxyFactory extends AbstractProxyFactory
 
                 throw EntityNotFoundException::fromClassNameAndIdentifier(
                     $classMetadata->getName(),
-                    $this->identifierFlattener->flattenIdentifier($classMetadata, $identifier),
+                    $this->identifierFlattener->flattenIdentifier($classMetadata, $identifier)
                 );
             }
         };
@@ -155,7 +166,7 @@ class ProxyFactory extends AbstractProxyFactory
             if ($original === null) {
                 throw EntityNotFoundException::fromClassNameAndIdentifier(
                     $classMetadata->getName(),
-                    $this->identifierFlattener->flattenIdentifier($classMetadata, $identifier),
+                    $this->identifierFlattener->flattenIdentifier($classMetadata, $identifier)
                 );
             }
 
@@ -164,6 +175,7 @@ class ProxyFactory extends AbstractProxyFactory
                     continue;
                 }
 
+                $property->setAccessible(true);
                 $property->setValue($proxy, $property->getValue($original));
             }
         };

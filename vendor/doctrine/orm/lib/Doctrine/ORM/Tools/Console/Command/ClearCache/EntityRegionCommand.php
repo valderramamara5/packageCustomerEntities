@@ -20,7 +20,10 @@ use function sprintf;
  */
 class EntityRegionCommand extends AbstractEntityManagerCommand
 {
-    protected function configure(): void
+    /**
+     * {@inheritdoc}
+     */
+    protected function configure()
     {
         $this->setName('orm:clear-cache:region:entity')
              ->setDescription('Clear a second-level cache entity region')
@@ -52,10 +55,16 @@ Alternatively, if you want to flush the configured cache provider for an entity 
 
 Finally, be aware that if <info>--flush</info> option is passed,
 not all cache providers are able to flush entries, because of a limitation of its execution nature.
-EOT);
+EOT
+             );
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
+    /**
+     * {@inheritdoc}
+     *
+     * @return int
+     */
+    protected function execute(InputInterface $input, OutputInterface $output)
     {
         $ui = new SymfonyStyle($input, $output);
 
@@ -94,8 +103,8 @@ EOT);
                 sprintf(
                     'Clearing second-level cache entry for entity <info>"%s"</info> identified by <info>"%s"</info>',
                     $entityClass,
-                    $entityId,
-                ),
+                    $entityId
+                )
             );
             $cache->evictEntity($entityClass, $entityId);
 

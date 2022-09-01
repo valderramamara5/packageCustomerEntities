@@ -20,7 +20,10 @@ use function sprintf;
  */
 class ValidateSchemaCommand extends AbstractEntityManagerCommand
 {
-    protected function configure(): void
+    /**
+     * {@inheritdoc}
+     */
+    protected function configure()
     {
         $this->setName('orm:validate-schema')
              ->setDescription('Validate the mapping files')
@@ -30,7 +33,12 @@ class ValidateSchemaCommand extends AbstractEntityManagerCommand
              ->setHelp('Validate that the mapping files are correct and in sync with the database.');
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
+    /**
+     * {@inheritdoc}
+     *
+     * @return int
+     */
+    protected function execute(InputInterface $input, OutputInterface $output)
     {
         $ui = new SymfonyStyle($input, $output);
 
@@ -49,8 +57,8 @@ class ValidateSchemaCommand extends AbstractEntityManagerCommand
                     $ui->text(
                         sprintf(
                             '<error>[FAIL]</error> The entity-class <comment>%s</comment> mapping is invalid:',
-                            $className,
-                        ),
+                            $className
+                        )
                     );
 
                     $ui->listing($errorMessages);

@@ -37,10 +37,10 @@ final class ManyToOne implements Annotation
      * @param string[]|null     $cascade
      */
     public function __construct(
-        string|null $targetEntity = null,
-        array|null $cascade = null,
+        ?string $targetEntity = null,
+        ?array $cascade = null,
         string $fetch = 'LAZY',
-        string|null $inversedBy = null,
+        ?string $inversedBy = null
     ) {
         $this->targetEntity = $targetEntity;
         $this->cascade      = $cascade;

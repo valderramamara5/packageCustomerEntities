@@ -15,19 +15,54 @@ use Doctrine\Common\Annotations\Annotation\NamedArgumentConstructor;
 #[Attribute(Attribute::TARGET_PROPERTY | Attribute::IS_REPEATABLE)]
 final class JoinColumn implements Annotation
 {
+    /** @var string|null */
+    public $name;
+
+    /** @var string */
+    public $referencedColumnName = 'id';
+
+    /** @var bool */
+    public $unique = false;
+
+    /** @var bool */
+    public $nullable = true;
+
+    /** @var mixed */
+    public $onDelete;
+
+    /** @var string|null */
+    public $columnDefinition;
+
     /**
-     * @param string|null          $fieldName Field name used in non-object hydration (array/scalar).
+     * Field name used in non-object hydration (array/scalar).
+     *
+     * @var string|null
+     */
+    public $fieldName;
+
+    /** @var array<string, mixed> */
+    public $options = [];
+
+    /**
      * @param array<string, mixed> $options
      */
     public function __construct(
-        public string|null $name = null,
-        public string $referencedColumnName = 'id',
-        public bool $unique = false,
-        public bool $nullable = true,
-        public mixed $onDelete = null,
-        public string|null $columnDefinition = null,
-        public string|null $fieldName = null,
-        public array $options = [],
+        ?string $name = null,
+        string $referencedColumnName = 'id',
+        bool $unique = false,
+        bool $nullable = true,
+        $onDelete = null,
+        ?string $columnDefinition = null,
+        ?string $fieldName = null,
+        array $options = []
     ) {
+        $this->name                 = $name;
+        $this->referencedColumnName = $referencedColumnName;
+        $this->unique               = $unique;
+        $this->nullable             = $nullable;
+        $this->onDelete             = $onDelete;
+        $this->columnDefinition     = $columnDefinition;
+        $this->fieldName            = $fieldName;
+        $this->options              = $options;
     }
 }

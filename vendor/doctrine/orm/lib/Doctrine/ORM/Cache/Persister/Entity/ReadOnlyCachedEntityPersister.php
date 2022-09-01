@@ -12,7 +12,10 @@ use Doctrine\ORM\Cache\Exception\CannotUpdateReadOnlyEntity;
  */
 class ReadOnlyCachedEntityPersister extends NonStrictReadWriteCachedEntityPersister
 {
-    public function update(object $entity): void
+    /**
+     * {@inheritdoc}
+     */
+    public function update($entity)
     {
         throw CannotUpdateReadOnlyEntity::fromEntity(ClassUtils::getClass($entity));
     }

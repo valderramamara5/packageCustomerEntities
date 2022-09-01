@@ -20,22 +20,23 @@ class EntityCacheKey extends CacheKey
      * @readonly Public only for performance reasons, it should be considered immutable.
      * @var array<string, mixed>
      */
-    public array $identifier;
+    public $identifier;
 
     /**
      * The entity class name
      *
      * @readonly Public only for performance reasons, it should be considered immutable.
+     * @var string
      * @psalm-var class-string
      */
-    public string $entityClass;
+    public $entityClass;
 
     /**
      * @param string               $entityClass The entity class name. In a inheritance hierarchy it should always be the root entity class.
      * @param array<string, mixed> $identifier  The entity identifier
      * @psalm-param class-string $entityClass
      */
-    public function __construct(string $entityClass, array $identifier)
+    public function __construct($entityClass, array $identifier)
     {
         ksort($identifier);
 

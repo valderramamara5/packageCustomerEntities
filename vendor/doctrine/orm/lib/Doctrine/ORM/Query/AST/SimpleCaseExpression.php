@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Doctrine\ORM\Query\AST;
 
-use Doctrine\ORM\Query\SqlWalker;
-
 /**
  * SimpleCaseExpression ::= "CASE" CaseOperand SimpleWhenClause {SimpleWhenClause}* "ELSE" ScalarExpression "END"
  *
@@ -13,20 +11,32 @@ use Doctrine\ORM\Query\SqlWalker;
  */
 class SimpleCaseExpression extends Node
 {
+    /** @var PathExpression */
+    public $caseOperand = null;
+
+    /** @var mixed[] */
+    public $simpleWhenClauses = [];
+
+    /** @var mixed */
+    public $elseScalarExpression = null;
+
     /**
      * @param PathExpression $caseOperand
      * @param mixed[]        $simpleWhenClauses
      * @param mixed          $elseScalarExpression
      */
-    public function __construct(
-        public $caseOperand = null,
-        public array $simpleWhenClauses = [],
-        public $elseScalarExpression = null,
-    ) {
+    public function __construct($caseOperand, array $simpleWhenClauses, $elseScalarExpression)
+    {
+        $this->caseOperand          = $caseOperand;
+        $this->simpleWhenClauses    = $simpleWhenClauses;
+        $this->elseScalarExpression = $elseScalarExpression;
     }
 
-    public function dispatch(SqlWalker $walker): string
+    /**
+     * {@inheritdoc}
+     */
+    public function dispatch($sqlWalker)
     {
-        return $walker->walkSimpleCaseExpression($this);
+        return $sqlWalker->walkSimpleCaseExpression($this);
     }
 }

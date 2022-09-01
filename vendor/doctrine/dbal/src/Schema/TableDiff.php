@@ -96,9 +96,7 @@ class TableDiff
     public $fromTable;
 
     /**
-     * Constructs a TableDiff object.
-     *
-     * @internal The diff can be only instantiated by a {@see Comparator}.
+     * Constructs an TableDiff object.
      *
      * @param string       $tableName
      * @param Column[]     $addedColumns

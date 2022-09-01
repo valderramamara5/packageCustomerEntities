@@ -30,18 +30,20 @@ class LimitSubqueryWalker extends TreeWalkerAdapter
 
     /**
      * Counter for generating unique order column aliases.
+     *
+     * @var int
      */
-    private int $aliasCounter = 0;
+    private $_aliasCounter = 0;
 
-    public function walkSelectStatement(SelectStatement $selectStatement): void
+    public function walkSelectStatement(SelectStatement $AST)
     {
         // Get the root entity and alias from the AST fromClause
-        $from      = $selectStatement->fromClause->identificationVariableDeclarations;
+        $from      = $AST->fromClause->identificationVariableDeclarations;
         $fromRoot  = reset($from);
         $rootAlias = $fromRoot->rangeVariableDeclaration->aliasIdentificationVariable;
         $rootClass = $this->getMetadataForDqlAlias($rootAlias);
 
-        $this->validate($selectStatement);
+        $this->validate($AST);
         $identifier = $rootClass->getSingleIdentifierFieldName();
 
         if (isset($rootClass->associationMappings[$identifier])) {
@@ -50,7 +52,7 @@ class LimitSubqueryWalker extends TreeWalkerAdapter
 
         $this->_getQuery()->setHint(
             self::IDENTIFIER_TYPE,
-            Type::getType($rootClass->fieldMappings[$identifier]['type']),
+            Type::getType($rootClass->fieldMappings[$identifier]['type'])
         );
 
         $this->_getQuery()->setHint(self::FORCE_DBAL_TYPE_CONVERSION, true);
@@ -58,24 +60,24 @@ class LimitSubqueryWalker extends TreeWalkerAdapter
         $pathExpression = new PathExpression(
             PathExpression::TYPE_STATE_FIELD | PathExpression::TYPE_SINGLE_VALUED_ASSOCIATION,
             $rootAlias,
-            $identifier,
+            $identifier
         );
 
         $pathExpression->type = PathExpression::TYPE_STATE_FIELD;
 
-        $selectStatement->selectClause->selectExpressions = [new SelectExpression($pathExpression, '_dctrn_id')];
-        $selectStatement->selectClause->isDistinct        = true;
+        $AST->selectClause->selectExpressions = [new SelectExpression($pathExpression, '_dctrn_id')];
+        $AST->selectClause->isDistinct        = true;
 
-        if (! isset($selectStatement->orderByClause)) {
+        if (! isset($AST->orderByClause)) {
             return;
         }
 
-        $queryComponents = $this->getQueryComponents();
-        foreach ($selectStatement->orderByClause->orderByItems as $item) {
+        $queryComponents = $this->_getQueryComponents();
+        foreach ($AST->orderByClause->orderByItems as $item) {
             if ($item->expression instanceof PathExpression) {
-                $selectStatement->selectClause->selectExpressions[] = new SelectExpression(
+                $AST->selectClause->selectExpressions[] = new SelectExpression(
                     $this->createSelectExpressionItem($item->expression),
-                    '_dctrn_ord' . $this->aliasCounter++,
+                    '_dctrn_ord' . $this->_aliasCounter++
                 );
 
                 continue;
@@ -85,9 +87,9 @@ class LimitSubqueryWalker extends TreeWalkerAdapter
                 $qComp = $queryComponents[$item->expression];
 
                 if (isset($qComp['resultVariable'])) {
-                    $selectStatement->selectClause->selectExpressions[] = new SelectExpression(
+                    $AST->selectClause->selectExpressions[] = new SelectExpression(
                         $qComp['resultVariable'],
-                        $item->expression,
+                        $item->expression
                     );
                 }
             }

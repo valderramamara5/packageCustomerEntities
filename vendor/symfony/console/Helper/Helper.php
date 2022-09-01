@@ -23,11 +23,17 @@ abstract class Helper implements HelperInterface
 {
     protected $helperSet = null;
 
+    /**
+     * {@inheritdoc}
+     */
     public function setHelperSet(HelperSet $helperSet = null)
     {
         $this->helperSet = $helperSet;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getHelperSet(): ?HelperSet
     {
         return $this->helperSet;

@@ -16,63 +16,90 @@ use function array_sum;
 class StatisticsCacheLogger implements CacheLogger
 {
     /** @var array<string, int> */
-    private array $cacheMissCountMap = [];
+    private $cacheMissCountMap = [];
 
     /** @var array<string, int> */
-    private array $cacheHitCountMap = [];
+    private $cacheHitCountMap = [];
 
     /** @var array<string, int> */
-    private array $cachePutCountMap = [];
+    private $cachePutCountMap = [];
 
-    public function collectionCacheMiss(string $regionName, CollectionCacheKey $key): void
+    /**
+     * {@inheritdoc}
+     */
+    public function collectionCacheMiss($regionName, CollectionCacheKey $key)
     {
         $this->cacheMissCountMap[$regionName]
             = ($this->cacheMissCountMap[$regionName] ?? 0) + 1;
     }
 
-    public function collectionCacheHit(string $regionName, CollectionCacheKey $key): void
+    /**
+     * {@inheritdoc}
+     */
+    public function collectionCacheHit($regionName, CollectionCacheKey $key)
     {
         $this->cacheHitCountMap[$regionName]
             = ($this->cacheHitCountMap[$regionName] ?? 0) + 1;
     }
 
-    public function collectionCachePut(string $regionName, CollectionCacheKey $key): void
+    /**
+     * {@inheritdoc}
+     */
+    public function collectionCachePut($regionName, CollectionCacheKey $key)
     {
         $this->cachePutCountMap[$regionName]
             = ($this->cachePutCountMap[$regionName] ?? 0) + 1;
     }
 
-    public function entityCacheMiss(string $regionName, EntityCacheKey $key): void
+    /**
+     * {@inheritdoc}
+     */
+    public function entityCacheMiss($regionName, EntityCacheKey $key)
     {
         $this->cacheMissCountMap[$regionName]
             = ($this->cacheMissCountMap[$regionName] ?? 0) + 1;
     }
 
-    public function entityCacheHit(string $regionName, EntityCacheKey $key): void
+    /**
+     * {@inheritdoc}
+     */
+    public function entityCacheHit($regionName, EntityCacheKey $key)
     {
         $this->cacheHitCountMap[$regionName]
             = ($this->cacheHitCountMap[$regionName] ?? 0) + 1;
     }
 
-    public function entityCachePut(string $regionName, EntityCacheKey $key): void
+    /**
+     * {@inheritdoc}
+     */
+    public function entityCachePut($regionName, EntityCacheKey $key)
     {
         $this->cachePutCountMap[$regionName]
             = ($this->cachePutCountMap[$regionName] ?? 0) + 1;
     }
 
-    public function queryCacheHit(string $regionName, QueryCacheKey $key): void
+    /**
+     * {@inheritdoc}
+     */
+    public function queryCacheHit($regionName, QueryCacheKey $key)
     {
         $this->cacheHitCountMap[$regionName]
             = ($this->cacheHitCountMap[$regionName] ?? 0) + 1;
     }
 
-    public function queryCacheMiss(string $regionName, QueryCacheKey $key): void
+    /**
+     * {@inheritdoc}
+     */
+    public function queryCacheMiss($regionName, QueryCacheKey $key)
     {
         $this->cacheMissCountMap[$regionName]
             = ($this->cacheMissCountMap[$regionName] ?? 0) + 1;
     }
 
-    public function queryCachePut(string $regionName, QueryCacheKey $key): void
+    /**
+     * {@inheritdoc}
+     */
+    public function queryCachePut($regionName, QueryCacheKey $key)
     {
         $this->cachePutCountMap[$regionName]
             = ($this->cachePutCountMap[$regionName] ?? 0) + 1;
@@ -82,8 +109,10 @@ class StatisticsCacheLogger implements CacheLogger
      * Get the number of entries successfully retrieved from cache.
      *
      * @param string $regionName The name of the cache region.
+     *
+     * @return int
      */
-    public function getRegionHitCount(string $regionName): int
+    public function getRegionHitCount($regionName)
     {
         return $this->cacheHitCountMap[$regionName] ?? 0;
     }
@@ -92,8 +121,10 @@ class StatisticsCacheLogger implements CacheLogger
      * Get the number of cached entries *not* found in cache.
      *
      * @param string $regionName The name of the cache region.
+     *
+     * @return int
      */
-    public function getRegionMissCount(string $regionName): int
+    public function getRegionMissCount($regionName)
     {
         return $this->cacheMissCountMap[$regionName] ?? 0;
     }
@@ -102,26 +133,34 @@ class StatisticsCacheLogger implements CacheLogger
      * Get the number of cacheable entries put in cache.
      *
      * @param string $regionName The name of the cache region.
+     *
+     * @return int
      */
-    public function getRegionPutCount(string $regionName): int
+    public function getRegionPutCount($regionName)
     {
         return $this->cachePutCountMap[$regionName] ?? 0;
     }
 
-    /** @return array<string, int> */
-    public function getRegionsMiss(): array
+    /**
+     * @return array<string, int>
+     */
+    public function getRegionsMiss()
     {
         return $this->cacheMissCountMap;
     }
 
-    /** @return array<string, int> */
-    public function getRegionsHit(): array
+    /**
+     * @return array<string, int>
+     */
+    public function getRegionsHit()
     {
         return $this->cacheHitCountMap;
     }
 
-    /** @return array<string, int> */
-    public function getRegionsPut(): array
+    /**
+     * @return array<string, int>
+     */
+    public function getRegionsPut()
     {
         return $this->cachePutCountMap;
     }
@@ -130,8 +169,10 @@ class StatisticsCacheLogger implements CacheLogger
      * Clear region statistics
      *
      * @param string $regionName The name of the cache region.
+     *
+     * @return void
      */
-    public function clearRegionStats(string $regionName): void
+    public function clearRegionStats($regionName)
     {
         $this->cachePutCountMap[$regionName]  = 0;
         $this->cacheHitCountMap[$regionName]  = 0;
@@ -140,8 +181,10 @@ class StatisticsCacheLogger implements CacheLogger
 
     /**
      * Clear all statistics
+     *
+     * @return void
      */
-    public function clearStats(): void
+    public function clearStats()
     {
         $this->cachePutCountMap  = [];
         $this->cacheHitCountMap  = [];
@@ -150,24 +193,30 @@ class StatisticsCacheLogger implements CacheLogger
 
     /**
      * Get the total number of put in cache.
+     *
+     * @return int
      */
-    public function getPutCount(): int
+    public function getPutCount()
     {
         return array_sum($this->cachePutCountMap);
     }
 
     /**
      * Get the total number of entries successfully retrieved from cache.
+     *
+     * @return int
      */
-    public function getHitCount(): int
+    public function getHitCount()
     {
         return array_sum($this->cacheHitCountMap);
     }
 
     /**
      * Get the total number of cached entries *not* found in cache.
+     *
+     * @return int
      */
-    public function getMissCount(): int
+    public function getMissCount()
     {
         return array_sum($this->cacheMissCountMap);
     }

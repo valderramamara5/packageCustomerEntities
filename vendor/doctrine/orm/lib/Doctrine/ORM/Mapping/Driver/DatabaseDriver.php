@@ -14,6 +14,7 @@ use Doctrine\Deprecations\Deprecation;
 use Doctrine\Inflector\Inflector;
 use Doctrine\Inflector\InflectorFactory;
 use Doctrine\ORM\Mapping\ClassMetadata;
+use Doctrine\ORM\Mapping\ClassMetadataInfo;
 use Doctrine\ORM\Mapping\MappingException;
 use Doctrine\Persistence\Mapping\ClassMetadata as PersistenceClassMetadata;
 use Doctrine\Persistence\Mapping\Driver\MappingDriver;
@@ -51,6 +52,13 @@ class DatabaseDriver implements MappingDriver
      * To be removed as soon as support for DBAL 3 is dropped.
      */
     private const OBJECT = 'object';
+
+    /**
+     * Replacement for {@see Types::JSON_ARRAY}.
+     *
+     * To be removed as soon as support for DBAL 2 is dropped.
+     */
+    private const JSON_ARRAY = 'json_array';
 
     /** @var AbstractSchemaManager */
     private $_sm;
@@ -191,7 +199,7 @@ class DatabaseDriver implements MappingDriver
                 'Passing an instance of %s to %s is deprecated, please pass a ClassMetadata instance instead.',
                 get_class($metadata),
                 __METHOD__,
-                ClassMetadata::class,
+                ClassMetadata::class
             );
         }
 
@@ -277,7 +285,9 @@ class DatabaseDriver implements MappingDriver
         }
     }
 
-    /** @throws MappingException */
+    /**
+     * @throws MappingException
+     */
     private function reverseEngineerMappingFromDatabase(): void
     {
         if ($this->tables !== null) {
@@ -299,7 +309,7 @@ class DatabaseDriver implements MappingDriver
             if (! $table->hasPrimaryKey()) {
                 throw new MappingException(
                     'Table ' . $tableName . ' has no primary key. Doctrine does not ' .
-                    "support reverse engineering from tables that don't have a primary key.",
+                    "support reverse engineering from tables that don't have a primary key."
                 );
             }
 
@@ -324,7 +334,7 @@ class DatabaseDriver implements MappingDriver
     /**
      * Build indexes from a class metadata.
      */
-    private function buildIndexes(ClassMetadata $metadata): void
+    private function buildIndexes(ClassMetadataInfo $metadata): void
     {
         $tableName = $metadata->table['name'];
         $indexes   = $this->tables[$tableName]->getIndexes();
@@ -347,7 +357,7 @@ class DatabaseDriver implements MappingDriver
     /**
      * Build field mapping from class metadata.
      */
-    private function buildFieldMappings(ClassMetadata $metadata): void
+    private function buildFieldMappings(ClassMetadataInfo $metadata): void
     {
         $tableName      = $metadata->table['name'];
         $columns        = $this->tables[$tableName]->getColumns();
@@ -396,11 +406,11 @@ class DatabaseDriver implements MappingDriver
      *     columnName: string,
      *     type: string,
      *     nullable: bool,
-     *     options: array{
+     *     options?: array{
      *         unsigned?: bool,
      *         fixed?: bool,
-     *         comment: string|null,
-     *         default?: mixed
+     *         comment?: string,
+     *         default?: string
      *     },
      *     precision?: int,
      *     scale?: int,
@@ -414,9 +424,6 @@ class DatabaseDriver implements MappingDriver
             'columnName' => $column->getName(),
             'type'       => Type::getTypeRegistry()->lookupName($column->getType()),
             'nullable'   => ! $column->getNotnull(),
-            'options'    => [
-                'comment' => $column->getComment(),
-            ],
         ];
 
         // Type specific elements
@@ -424,6 +431,7 @@ class DatabaseDriver implements MappingDriver
             case self::ARRAY:
             case Types::BLOB:
             case Types::GUID:
+            case self::JSON_ARRAY:
             case self::OBJECT:
             case Types::SIMPLE_ARRAY:
             case Types::STRING:
@@ -445,6 +453,12 @@ class DatabaseDriver implements MappingDriver
                 break;
         }
 
+        // Comment
+        $comment = $column->getComment();
+        if ($comment !== null) {
+            $fieldMapping['options']['comment'] = $comment;
+        }
+
         // Default
         $default = $column->getDefault();
         if ($default !== null) {
@@ -459,7 +473,7 @@ class DatabaseDriver implements MappingDriver
      *
      * @return void
      */
-    private function buildToOneAssociationMappings(ClassMetadata $metadata)
+    private function buildToOneAssociationMappings(ClassMetadataInfo $metadata)
     {
         assert($this->tables !== null);
 
@@ -510,7 +524,7 @@ class DatabaseDriver implements MappingDriver
     {
         try {
             return $table->getPrimaryKey()->getColumns();
-        } catch (SchemaException) {
+        } catch (SchemaException $e) {
             // Do nothing
         }
 
@@ -539,7 +553,7 @@ class DatabaseDriver implements MappingDriver
     private function getFieldNameForColumn(
         string $tableName,
         string $columnName,
-        bool $fk = false,
+        bool $fk = false
     ): string {
         if (isset($this->fieldNamesForColumns[$tableName], $this->fieldNamesForColumns[$tableName][$columnName])) {
             return $this->fieldNamesForColumns[$tableName][$columnName];

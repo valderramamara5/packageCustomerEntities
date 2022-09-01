@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Doctrine\ORM\Exception;
 
-use LogicException;
-
 use function get_debug_type;
 
-final class EntityMissingAssignedId extends LogicException implements ORMException
+final class EntityMissingAssignedId extends ORMException
 {
-    /** @param object $entity */
+    /**
+     * @param object $entity
+     */
     public static function forField($entity, string $field): self
     {
         return new self('Entity of type ' . get_debug_type($entity) . " is missing an assigned ID for field  '" . $field . "'. " .

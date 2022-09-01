@@ -20,7 +20,10 @@ use function sprintf;
  */
 class DropCommand extends AbstractCommand
 {
-    protected function configure(): void
+    /**
+     * {@inheritdoc}
+     */
+    protected function configure()
     {
         $this->setName('orm:schema-tool:drop')
              ->setDescription('Drop the complete database schema of EntityManager Storage Connection or generate the corresponding SQL output')
@@ -37,13 +40,14 @@ by the ORM, you can use a DBAL functionality to filter the tables and sequences 
 on a global level:
 
     $config->setFilterSchemaAssetsExpression($regexp);
-EOT);
+EOT
+             );
     }
 
     /**
      * {@inheritdoc}
      */
-    protected function executeSchemaCommand(InputInterface $input, OutputInterface $output, SchemaTool $schemaTool, array $metadatas, SymfonyStyle $ui): int
+    protected function executeSchemaCommand(InputInterface $input, OutputInterface $output, SchemaTool $schemaTool, array $metadatas, SymfonyStyle $ui)
     {
         $isFullDatabaseDrop = $input->getOption('full-database');
         $dumpSql            = $input->getOption('dump-sql') === true;
@@ -100,7 +104,7 @@ EOT);
                 '',
                 sprintf('    <info>%s --force</info> to execute the command', $this->getName()),
                 sprintf('    <info>%s --dump-sql</info> to dump the SQL statements to the screen', $this->getName()),
-            ],
+            ]
         );
 
         return 1;

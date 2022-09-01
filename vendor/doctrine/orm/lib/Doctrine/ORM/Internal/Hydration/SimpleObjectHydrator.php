@@ -12,7 +12,6 @@ use RuntimeException;
 
 use function array_keys;
 use function array_search;
-use function assert;
 use function count;
 use function in_array;
 use function key;
@@ -23,9 +22,13 @@ class SimpleObjectHydrator extends AbstractHydrator
 {
     use SQLResultCasing;
 
-    private ClassMetadata|null $class = null;
+    /** @var ClassMetadata */
+    private $class;
 
-    protected function prepare(): void
+    /**
+     * {@inheritdoc}
+     */
+    protected function prepare()
     {
         if (count($this->resultSetMapping()->aliasMap) !== 1) {
             throw new RuntimeException('Cannot use SimpleObjectHydrator with a ResultSetMapping that contains more than one object result.');
@@ -38,7 +41,10 @@ class SimpleObjectHydrator extends AbstractHydrator
         $this->class = $this->getClassMetadata(reset($this->resultSetMapping()->aliasMap));
     }
 
-    protected function cleanup(): void
+    /**
+     * {@inheritdoc}
+     */
+    protected function cleanup()
     {
         parent::cleanup();
 
@@ -49,7 +55,7 @@ class SimpleObjectHydrator extends AbstractHydrator
     /**
      * {@inheritdoc}
      */
-    protected function hydrateAllData(): array
+    protected function hydrateAllData()
     {
         $result = [];
 
@@ -65,9 +71,8 @@ class SimpleObjectHydrator extends AbstractHydrator
     /**
      * {@inheritdoc}
      */
-    protected function hydrateRowData(array $row, array &$result): void
+    protected function hydrateRowData(array $row, array &$result)
     {
-        assert($this->class !== null);
         $entityName       = $this->class->name;
         $data             = [];
         $discrColumnValue = null;
@@ -87,13 +92,13 @@ class SimpleObjectHydrator extends AbstractHydrator
                 throw HydrationException::missingDiscriminatorColumn(
                     $entityName,
                     $discrColumnName,
-                    key($this->resultSetMapping()->aliasMap),
+                    key($this->resultSetMapping()->aliasMap)
                 );
             }
 
             if ($row[$discrColumnName] === '') {
                 throw HydrationException::emptyDiscriminatorValue(key(
-                    $this->resultSetMapping()->aliasMap,
+                    $this->resultSetMapping()->aliasMap
                 ));
             }
 

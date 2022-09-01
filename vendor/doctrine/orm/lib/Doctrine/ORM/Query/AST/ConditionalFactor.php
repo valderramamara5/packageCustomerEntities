@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Doctrine\ORM\Query\AST;
 
-use Doctrine\ORM\Query\SqlWalker;
-
 /**
  * ConditionalFactor ::= ["NOT"] ConditionalPrimary
  *
@@ -16,13 +14,22 @@ class ConditionalFactor extends Node
     /** @var bool */
     public $not = false;
 
-    /** @param ConditionalPrimary $conditionalPrimary */
-    public function __construct(public $conditionalPrimary)
+    /** @var ConditionalPrimary */
+    public $conditionalPrimary;
+
+    /**
+     * @param ConditionalPrimary $conditionalPrimary
+     */
+    public function __construct($conditionalPrimary)
     {
+        $this->conditionalPrimary = $conditionalPrimary;
     }
 
-    public function dispatch(SqlWalker $walker): string
+    /**
+     * {@inheritdoc}
+     */
+    public function dispatch($sqlWalker)
     {
-        return $walker->walkConditionalFactor($this);
+        return $sqlWalker->walkConditionalFactor($this);
     }
 }

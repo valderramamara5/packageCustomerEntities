@@ -9,10 +9,13 @@ use Doctrine\DBAL\Platforms\DB2Platform;
 use Doctrine\DBAL\Platforms\OraclePlatform;
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 
+use function method_exists;
 use function strtolower;
 use function strtoupper;
 
-/** @internal */
+/**
+ * @internal
+ */
 trait SQLResultCasing
 {
     private function getSQLResultCasing(AbstractPlatform $platform, string $column): string
@@ -23,6 +26,10 @@ trait SQLResultCasing
 
         if ($platform instanceof PostgreSQLPlatform) {
             return strtolower($column);
+        }
+
+        if (method_exists(AbstractPlatform::class, 'getSQLResultCasing')) {
+            return $platform->getSQLResultCasing($column);
         }
 
         return $column;

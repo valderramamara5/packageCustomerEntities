@@ -33,10 +33,10 @@ final class UniqueConstraint implements Annotation
      * @param array<string,mixed> $options
      */
     public function __construct(
-        string|null $name = null,
-        array|null $columns = null,
-        array|null $fields = null,
-        array|null $options = null,
+        ?string $name = null,
+        ?array $columns = null,
+        ?array $fields = null,
+        ?array $options = null
     ) {
         $this->name    = $name;
         $this->columns = $columns;

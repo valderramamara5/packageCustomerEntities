@@ -590,15 +590,9 @@ class SQLServerPlatform extends AbstractPlatform
             $requireDropDefaultConstraint = $this->alterColumnRequiresDropDefaultConstraint($columnDiff);
 
             if ($requireDropDefaultConstraint) {
-                if ($columnDiff->fromColumn !== null) {
-                    $fromColumnName = $columnDiff->fromColumn->getName();
-                } else {
-                    $fromColumnName = $columnDiff->oldColumnName;
-                }
-
                 $queryParts[] = $this->getAlterTableDropDefaultConstraintClause(
                     $diff->name,
-                    $fromColumnName,
+                    $columnDiff->oldColumnName,
                 );
             }
 
@@ -617,15 +611,15 @@ class SQLServerPlatform extends AbstractPlatform
             $queryParts[] = $this->getAlterTableAddDefaultConstraintClause($diff->name, $column);
         }
 
-        foreach ($diff->renamedColumns as $fromColumnName => $column) {
-            if ($this->onSchemaAlterTableRenameColumn($fromColumnName, $column, $diff, $columnSql)) {
+        foreach ($diff->renamedColumns as $oldColumnName => $column) {
+            if ($this->onSchemaAlterTableRenameColumn($oldColumnName, $column, $diff, $columnSql)) {
                 continue;
             }
 
-            $fromColumnName = new Identifier($fromColumnName);
+            $oldColumnName = new Identifier($oldColumnName);
 
             $sql[] = "sp_rename '" .
-                $diff->getName($this)->getQuotedName($this) . '.' . $fromColumnName->getQuotedName($this) .
+                $diff->getName($this)->getQuotedName($this) . '.' . $oldColumnName->getQuotedName($this) .
                 "', '" . $column->getQuotedName($this) . "', 'COLUMN'";
 
             // Recreate default constraint with new column name if necessary (for future reference).
@@ -635,7 +629,7 @@ class SQLServerPlatform extends AbstractPlatform
 
             $queryParts[] = $this->getAlterTableDropDefaultConstraintClause(
                 $diff->name,
-                $fromColumnName->getQuotedName($this),
+                $oldColumnName->getQuotedName($this),
             );
             $queryParts[] = $this->getAlterTableAddDefaultConstraintClause($diff->name, $column);
         }

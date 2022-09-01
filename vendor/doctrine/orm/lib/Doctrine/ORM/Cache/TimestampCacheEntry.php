@@ -11,12 +11,18 @@ use function microtime;
  */
 class TimestampCacheEntry implements CacheEntry
 {
-    /** @readonly Public only for performance reasons, it should be considered immutable. */
-    public float $time;
+    /**
+     * @readonly Public only for performance reasons, it should be considered immutable.
+     * @var float
+     */
+    public $time;
 
-    public function __construct(float|null $time = null)
+    /**
+     * @param float|null $time
+     */
+    public function __construct($time = null)
     {
-        $this->time = $time ?? microtime(true);
+        $this->time = $time ? (float) $time : microtime(true);
     }
 
     /**
@@ -25,8 +31,10 @@ class TimestampCacheEntry implements CacheEntry
      * This method allow Doctrine\Common\Cache\PhpFileCache compatibility
      *
      * @param array<string,float> $values array containing property values
+     *
+     * @return TimestampCacheEntry
      */
-    public static function __set_state(array $values): TimestampCacheEntry
+    public static function __set_state(array $values)
     {
         return new self($values['time']);
     }

@@ -38,11 +38,17 @@ class OutputFormatterStyle implements OutputFormatterStyleInterface
         $this->color = new Color($this->foreground = $foreground ?: '', $this->background = $background ?: '', $this->options = $options);
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function setForeground(string $color = null)
     {
         $this->color = new Color($this->foreground = $color ?: '', $this->background, $this->options);
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function setBackground(string $color = null)
     {
         $this->color = new Color($this->foreground, $this->background = $color ?: '', $this->options);
@@ -53,12 +59,18 @@ class OutputFormatterStyle implements OutputFormatterStyleInterface
         $this->href = $url;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function setOption(string $option)
     {
         $this->options[] = $option;
         $this->color = new Color($this->foreground, $this->background, $this->options);
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function unsetOption(string $option)
     {
         $pos = array_search($option, $this->options);
@@ -69,11 +81,17 @@ class OutputFormatterStyle implements OutputFormatterStyleInterface
         $this->color = new Color($this->foreground, $this->background, $this->options);
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function setOptions(array $options)
     {
         $this->color = new Color($this->foreground, $this->background, $this->options = $options);
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function apply(string $text): string
     {
         $this->handlesHrefGracefully ??= 'JetBrains-JediTerm' !== getenv('TERMINAL_EMULATOR')

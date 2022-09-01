@@ -6,22 +6,24 @@ namespace Doctrine\ORM;
 
 use DateTimeInterface;
 use Doctrine\ORM\Exception\ORMException;
-use Exception;
-use Throwable;
 
 /**
  * An OptimisticLockException is thrown when a version check on an object
  * that uses optimistic locking through a version field fails.
  */
-class OptimisticLockException extends Exception implements ORMException
+class OptimisticLockException extends ORMException
 {
+    /** @var object|null */
+    private $entity;
+
     /**
      * @param string      $msg
      * @param object|null $entity
      */
-    public function __construct($msg, private $entity, Throwable|null $previous = null)
+    public function __construct($msg, $entity)
     {
-        parent::__construct($msg, 0, $previous);
+        parent::__construct($msg);
+        $this->entity = $entity;
     }
 
     /**

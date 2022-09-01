@@ -14,11 +14,13 @@ use function func_num_args;
 use function is_object;
 use function sprintf;
 
-/** @internal */
+/**
+ * @internal
+ */
 final class ReflectionReadonlyProperty extends ReflectionProperty
 {
     public function __construct(
-        private readonly ReflectionProperty $wrappedProperty,
+        private ReflectionProperty $wrappedProperty
     ) {
         if (! $wrappedProperty->isReadOnly()) {
             throw new InvalidArgumentException('Given property is not readonly.');
@@ -27,7 +29,7 @@ final class ReflectionReadonlyProperty extends ReflectionProperty
         parent::__construct($wrappedProperty->class, $wrappedProperty->name);
     }
 
-    public function getValue(object|null $object = null): mixed
+    public function getValue(?object $object = null): mixed
     {
         return $this->wrappedProperty->getValue(...func_get_args());
     }

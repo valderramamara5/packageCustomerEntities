@@ -14,13 +14,18 @@ use function spl_object_id;
 
 class ReadWriteCachedCollectionPersister extends AbstractCollectionPersister
 {
-    /** @param mixed[] $association The association mapping. */
+    /**
+     * @param mixed[] $association The association mapping.
+     */
     public function __construct(CollectionPersister $persister, ConcurrentRegion $region, EntityManagerInterface $em, array $association)
     {
         parent::__construct($persister, $region, $em, $association);
     }
 
-    public function afterTransactionComplete(): void
+    /**
+     * {@inheritdoc}
+     */
+    public function afterTransactionComplete()
     {
         if (isset($this->queuedCache['update'])) {
             foreach ($this->queuedCache['update'] as $item) {
@@ -37,7 +42,10 @@ class ReadWriteCachedCollectionPersister extends AbstractCollectionPersister
         $this->queuedCache = [];
     }
 
-    public function afterTransactionRolledBack(): void
+    /**
+     * {@inheritdoc}
+     */
+    public function afterTransactionRolledBack()
     {
         if (isset($this->queuedCache['update'])) {
             foreach ($this->queuedCache['update'] as $item) {
@@ -54,7 +62,10 @@ class ReadWriteCachedCollectionPersister extends AbstractCollectionPersister
         $this->queuedCache = [];
     }
 
-    public function delete(PersistentCollection $collection): void
+    /**
+     * {@inheritdoc}
+     */
+    public function delete(PersistentCollection $collection)
     {
         $ownerId = $this->uow->getEntityIdentifier($collection->getOwner());
         $key     = new CollectionCacheKey($this->sourceEntity->rootEntityName, $this->association['fieldName'], $ownerId);
@@ -72,7 +83,10 @@ class ReadWriteCachedCollectionPersister extends AbstractCollectionPersister
         ];
     }
 
-    public function update(PersistentCollection $collection): void
+    /**
+     * {@inheritdoc}
+     */
+    public function update(PersistentCollection $collection)
     {
         $isInitialized = $collection->isInitialized();
         $isDirty       = $collection->isDirty();

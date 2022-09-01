@@ -16,8 +16,25 @@ use function unserialize;
  */
 class SequenceGenerator extends AbstractIdGenerator implements Serializable
 {
-    private int $nextValue     = 0;
-    private int|null $maxValue = null;
+    /**
+     * The allocation size of the sequence.
+     *
+     * @var int
+     */
+    private $_allocationSize;
+
+    /**
+     * The name of the sequence.
+     *
+     * @var string
+     */
+    private $_sequenceName;
+
+    /** @var int */
+    private $_nextValue = 0;
+
+    /** @var int|null */
+    private $_maxValue = null;
 
     /**
      * Initializes a new sequence generator.
@@ -25,69 +42,92 @@ class SequenceGenerator extends AbstractIdGenerator implements Serializable
      * @param string $sequenceName   The name of the sequence.
      * @param int    $allocationSize The allocation size of the sequence.
      */
-    public function __construct(
-        private string $sequenceName,
-        private int $allocationSize,
-    ) {
+    public function __construct($sequenceName, $allocationSize)
+    {
+        $this->_sequenceName   = $sequenceName;
+        $this->_allocationSize = $allocationSize;
     }
 
-    public function generateId(EntityManagerInterface $em, object|null $entity): int
+    /**
+     * {@inheritDoc}
+     */
+    public function generateId(EntityManagerInterface $em, $entity)
     {
-        if ($this->maxValue === null || $this->nextValue === $this->maxValue) {
+        if ($this->_maxValue === null || $this->_nextValue === $this->_maxValue) {
             // Allocate new values
             $connection = $em->getConnection();
-            $sql        = $connection->getDatabasePlatform()->getSequenceNextValSQL($this->sequenceName);
+            $sql        = $connection->getDatabasePlatform()->getSequenceNextValSQL($this->_sequenceName);
 
             if ($connection instanceof PrimaryReadReplicaConnection) {
                 $connection->ensureConnectedToPrimary();
             }
 
-            $this->nextValue = (int) $connection->fetchOne($sql);
-            $this->maxValue  = $this->nextValue + $this->allocationSize;
+            $this->_nextValue = (int) $connection->fetchOne($sql);
+            $this->_maxValue  = $this->_nextValue + $this->_allocationSize;
         }
 
-        return $this->nextValue++;
+        return $this->_nextValue++;
     }
 
     /**
      * Gets the maximum value of the currently allocated bag of values.
+     *
+     * @return int|null
      */
-    public function getCurrentMaxValue(): int|null
+    public function getCurrentMaxValue()
     {
-        return $this->maxValue;
+        return $this->_maxValue;
     }
 
     /**
      * Gets the next value that will be returned by generate().
+     *
+     * @return int
      */
-    public function getNextValue(): int
+    public function getNextValue()
     {
-        return $this->nextValue;
+        return $this->_nextValue;
     }
 
-    final public function serialize(): string
+    /**
+     * @return string
+     *
+     * @final
+     */
+    public function serialize()
     {
         return serialize($this->__serialize());
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @return array<string, mixed>
+     */
     public function __serialize(): array
     {
         return [
-            'allocationSize' => $this->allocationSize,
-            'sequenceName' => $this->sequenceName,
+            'allocationSize' => $this->_allocationSize,
+            'sequenceName' => $this->_sequenceName,
         ];
     }
 
-    final public function unserialize(string $serialized): void
+    /**
+     * @param string $serialized
+     *
+     * @return void
+     *
+     * @final
+     */
+    public function unserialize($serialized)
     {
         $this->__unserialize(unserialize($serialized));
     }
 
-    /** @param array<string, mixed> $data */
+    /**
+     * @param array<string, mixed> $data
+     */
     public function __unserialize(array $data): void
     {
-        $this->sequenceName   = $data['sequenceName'];
-        $this->allocationSize = $data['allocationSize'];
+        $this->_sequenceName   = $data['sequenceName'];
+        $this->_allocationSize = $data['allocationSize'];
     }
 }

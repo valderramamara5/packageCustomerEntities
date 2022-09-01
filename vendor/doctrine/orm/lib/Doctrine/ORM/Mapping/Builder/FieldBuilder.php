@@ -31,7 +31,9 @@ class FieldBuilder
     /** @var string|null */
     private $customIdGenerator;
 
-    /** @param mixed[] $mapping */
+    /**
+     * @param mixed[] $mapping
+     */
     public function __construct(ClassMetadataBuilder $builder, array $mapping)
     {
         $this->builder = $builder;
@@ -148,6 +150,18 @@ class FieldBuilder
         $this->mapping['scale'] = $s;
 
         return $this;
+    }
+
+    /**
+     * Sets field as primary key.
+     *
+     * @deprecated Use makePrimaryKey() instead
+     *
+     * @return FieldBuilder
+     */
+    public function isPrimaryKey()
+    {
+        return $this->makePrimaryKey();
     }
 
     /**

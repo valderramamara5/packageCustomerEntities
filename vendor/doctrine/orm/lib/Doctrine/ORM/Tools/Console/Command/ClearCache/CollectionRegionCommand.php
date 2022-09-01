@@ -20,7 +20,10 @@ use function sprintf;
  */
 class CollectionRegionCommand extends AbstractEntityManagerCommand
 {
-    protected function configure(): void
+    /**
+     * {@inheritdoc}
+     */
+    protected function configure()
     {
         $this->setName('orm:clear-cache:region:collection')
              ->setDescription('Clear a second-level cache collection region')
@@ -53,10 +56,16 @@ Alternatively, if you want to flush the configured cache provider for an collect
 
 Finally, be aware that if <info>--flush</info> option is passed,
 not all cache providers are able to flush entries, because of a limitation of its execution nature.
-EOT);
+EOT
+             );
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
+    /**
+     * {@inheritdoc}
+     *
+     * @return int
+     */
+    protected function execute(InputInterface $input, OutputInterface $output)
     {
         $ui = new SymfonyStyle($input, $output);
 
@@ -82,8 +91,8 @@ EOT);
                 sprintf(
                     'Flushing cache provider configured for <info>"%s#%s"</info>',
                     $ownerClass,
-                    $assoc,
-                ),
+                    $assoc
+                )
             );
 
             return 0;
@@ -103,8 +112,8 @@ EOT);
                     'Clearing second-level cache entry for collection <info>"%s#%s"</info> owner entity identified by <info>"%s"</info>',
                     $ownerClass,
                     $assoc,
-                    $ownerId,
-                ),
+                    $ownerId
+                )
             );
             $cache->evictCollection($ownerClass, $assoc, $ownerId);
 

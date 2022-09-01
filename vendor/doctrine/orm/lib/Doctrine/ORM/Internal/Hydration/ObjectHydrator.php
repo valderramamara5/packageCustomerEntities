@@ -27,29 +27,33 @@ use function spl_object_id;
 class ObjectHydrator extends AbstractHydrator
 {
     /** @var mixed[] */
-    private array $identifierMap = [];
+    private $identifierMap = [];
 
     /** @var mixed[] */
-    private array $resultPointers = [];
+    private $resultPointers = [];
 
     /** @var mixed[] */
-    private array $idTemplate = [];
+    private $idTemplate = [];
 
-    private int $resultCounter = 0;
-
-    /** @var mixed[] */
-    private array $rootAliases = [];
+    /** @var int */
+    private $resultCounter = 0;
 
     /** @var mixed[] */
-    private array $initializedCollections = [];
+    private $rootAliases = [];
+
+    /** @var mixed[] */
+    private $initializedCollections = [];
 
     /** @var array<string, PersistentCollection> */
     private $uninitializedCollections = [];
 
     /** @var mixed[] */
-    private array $existingCollections = [];
+    private $existingCollections = [];
 
-    protected function prepare(): void
+    /**
+     * {@inheritdoc}
+     */
+    protected function prepare()
     {
         if (! isset($this->_hints[UnitOfWork::HINT_DEFEREAGERLOAD])) {
             $this->_hints[UnitOfWork::HINT_DEFEREAGERLOAD] = true;
@@ -102,7 +106,10 @@ class ObjectHydrator extends AbstractHydrator
         }
     }
 
-    protected function cleanup(): void
+    /**
+     * {@inheritdoc}
+     */
+    protected function cleanup()
     {
         $eagerLoad = isset($this->_hints[UnitOfWork::HINT_DEFEREAGERLOAD]) && $this->_hints[UnitOfWork::HINT_DEFEREAGERLOAD] === true;
 
@@ -133,7 +140,7 @@ class ObjectHydrator extends AbstractHydrator
     /**
      * {@inheritdoc}
      */
-    protected function hydrateAllData(): array
+    protected function hydrateAllData()
     {
         $result = [];
 
@@ -158,14 +165,15 @@ class ObjectHydrator extends AbstractHydrator
     /**
      * Initializes a related collection.
      *
+     * @param object $entity         The entity to which the collection belongs.
      * @param string $fieldName      The name of the field on the entity that holds the collection.
      * @param string $parentDqlAlias Alias of the parent fetch joining this collection.
      */
     private function initRelatedCollection(
-        object $entity,
+        $entity,
         ClassMetadata $class,
         string $fieldName,
-        string $parentDqlAlias,
+        string $parentDqlAlias
     ): PersistentCollection {
         $oid      = spl_object_id($entity);
         $relation = $class->associationMappings[$fieldName];
@@ -179,7 +187,7 @@ class ObjectHydrator extends AbstractHydrator
             $value = new PersistentCollection(
                 $this->_em,
                 $this->_metadataCache[$relation['targetEntity']],
-                $value,
+                $value
             );
             $value->setOwner($entity, $relation);
 
@@ -212,9 +220,11 @@ class ObjectHydrator extends AbstractHydrator
      * @param string $dqlAlias The DQL alias of the entity's class.
      * @psalm-param array<string, mixed> $data     The instance data.
      *
+     * @return object
+     *
      * @throws HydrationException
      */
-    private function getEntity(array $data, string $dqlAlias): object
+    private function getEntity(array $data, string $dqlAlias)
     {
         $className = $this->resultSetMapping()->aliasMap[$dqlAlias];
 
@@ -259,8 +269,10 @@ class ObjectHydrator extends AbstractHydrator
     /**
      * @psalm-param class-string $className
      * @psalm-param array<string, mixed> $data
+     *
+     * @return mixed
      */
-    private function getEntityFromIdentityMap(string $className, array $data): object|bool
+    private function getEntityFromIdentityMap(string $className, array $data)
     {
         // TODO: Abstract this code and UnitOfWork::createEntity() equivalent?
         $class = $this->_metadataCache[$className];
@@ -301,8 +313,10 @@ class ObjectHydrator extends AbstractHydrator
      *
      * @param mixed[] $row    The data of the row to process.
      * @param mixed[] $result The result array to fill.
+     *
+     * @return void
      */
-    protected function hydrateRowData(array $row, array &$result): void
+    protected function hydrateRowData(array $row, array &$result)
     {
         // Initialize
         $id                 = $this->idTemplate; // initialize the id-memory
@@ -561,8 +575,12 @@ class ObjectHydrator extends AbstractHydrator
     /**
      * When executed in a hydrate() loop we may have to clear internal state to
      * decrease memory consumption.
+     *
+     * @param mixed $eventArgs
+     *
+     * @return void
      */
-    public function onClear(mixed $eventArgs): void
+    public function onClear($eventArgs)
     {
         parent::onClear($eventArgs);
 

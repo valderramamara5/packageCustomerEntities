@@ -10,12 +10,15 @@ use Doctrine\ORM\PersistentCollection;
 
 class ReadOnlyCachedCollectionPersister extends NonStrictReadWriteCachedCollectionPersister
 {
-    public function update(PersistentCollection $collection): void
+     /**
+      * {@inheritdoc}
+      */
+    public function update(PersistentCollection $collection)
     {
         if ($collection->isDirty() && $collection->getSnapshot()) {
             throw CannotUpdateReadOnlyCollection::fromEntityAndField(
                 ClassUtils::getClass($collection->getOwner()),
-                $this->association['fieldName'],
+                $this->association['fieldName']
             );
         }
 

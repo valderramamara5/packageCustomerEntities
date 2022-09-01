@@ -20,7 +20,10 @@ use function sprintf;
  */
 class InfoCommand extends AbstractEntityManagerCommand
 {
-    protected function configure(): void
+    /**
+     * {@inheritdoc}
+     */
+    protected function configure()
     {
         $this->setName('orm:info')
              ->setDescription('Show basic information about all mapped entities')
@@ -29,10 +32,16 @@ class InfoCommand extends AbstractEntityManagerCommand
 The <info>%command.name%</info> shows basic information about which
 entities exist and possibly if their mapping information contains errors or
 not.
-EOT);
+EOT
+             );
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
+    /**
+     * {@inheritdoc}
+     *
+     * @return int
+     */
+    protected function execute(InputInterface $input, OutputInterface $output)
     {
         $ui = new SymfonyStyle($input, $output);
 
@@ -47,7 +56,7 @@ EOT);
                 [
                     'You do not have any mapped Doctrine ORM entities according to the current configuration.',
                     'If you have entities or mapping files you should check your mapping configuration for errors.',
-                ],
+                ]
             );
 
             return 1;
@@ -68,7 +77,7 @@ EOT);
                         sprintf('<error>[FAIL]</error> %s', $entityClassName),
                         sprintf('<comment>%s</comment>', $e->getMessage()),
                         '',
-                    ],
+                    ]
                 );
 
                 $failure = true;

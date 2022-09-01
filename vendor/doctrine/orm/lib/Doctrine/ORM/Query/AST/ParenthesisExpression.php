@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Doctrine\ORM\Query\AST;
 
-use Doctrine\ORM\Query\SqlWalker;
-
 /**
  * ParenthesisExpression ::= "(" ArithmeticPrimary ")"
  */
@@ -19,7 +17,10 @@ class ParenthesisExpression extends Node
         $this->expression = $expression;
     }
 
-    public function dispatch(SqlWalker $walker): string
+    /**
+     * {@inheritdoc}
+     */
+    public function dispatch($walker)
     {
         return $walker->walkParenthesisExpression($this);
     }

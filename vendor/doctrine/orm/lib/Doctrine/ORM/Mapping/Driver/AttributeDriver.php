@@ -12,7 +12,7 @@ use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Mapping\MappingException;
 use Doctrine\Persistence\Mapping\ClassMetadata as PersistenceClassMetadata;
 use Doctrine\Persistence\Mapping\Driver\ColocatedMappingDriver;
-use Doctrine\Persistence\Mapping\Driver\MappingDriver;
+use LogicException;
 use ReflectionClass;
 use ReflectionMethod;
 use ReflectionProperty;
@@ -22,8 +22,11 @@ use function class_exists;
 use function constant;
 use function defined;
 use function get_class;
+use function sprintf;
 
-class AttributeDriver implements MappingDriver
+use const PHP_VERSION_ID;
+
+class AttributeDriver extends CompatibilityAnnotationDriver
 {
     use ColocatedMappingDriver;
 
@@ -43,9 +46,18 @@ class AttributeDriver implements MappingDriver
      */
     protected $reader;
 
-    /** @param array<string> $paths */
+    /**
+     * @param array<string> $paths
+     */
     public function __construct(array $paths)
     {
+        if (PHP_VERSION_ID < 80000) {
+            throw new LogicException(sprintf(
+                'The attribute metadata driver cannot be enabled on PHP 7. Please upgrade to PHP 8 or choose a different'
+                . ' metadata driver.'
+            ));
+        }
+
         $this->reader = new AttributeReader();
         $this->addPaths($paths);
     }
@@ -63,7 +75,7 @@ class AttributeDriver implements MappingDriver
             'doctrine/orm',
             'https://github.com/doctrine/orm/pull/9587',
             '%s is deprecated with no replacement',
-            __METHOD__,
+            __METHOD__
         );
 
         return $this->reader;
@@ -157,7 +169,7 @@ class AttributeDriver implements MappingDriver
                 ) {
                     throw MappingException::invalidIndexConfiguration(
                         $className,
-                        (string) ($indexAnnot->name ?? $idx),
+                        (string) ($indexAnnot->name ?? $idx)
                     );
                 }
 
@@ -198,7 +210,7 @@ class AttributeDriver implements MappingDriver
                 ) {
                     throw MappingException::invalidUniqueConstraintConfiguration(
                         $className,
-                        (string) ($uniqueConstraintAnnot->name ?? $idx),
+                        (string) ($uniqueConstraintAnnot->name ?? $idx)
                     );
                 }
 
@@ -232,7 +244,7 @@ class AttributeDriver implements MappingDriver
             $inheritanceTypeAttribute = $classAttributes[Mapping\InheritanceType::class];
 
             $metadata->setInheritanceType(
-                constant('Doctrine\ORM\Mapping\ClassMetadata::INHERITANCE_TYPE_' . $inheritanceTypeAttribute->value),
+                constant('Doctrine\ORM\Mapping\ClassMetadata::INHERITANCE_TYPE_' . $inheritanceTypeAttribute->value)
             );
 
             if ($metadata->inheritanceType !== ClassMetadata::INHERITANCE_TYPE_NONE) {
@@ -246,7 +258,7 @@ class AttributeDriver implements MappingDriver
                             'type'             => $discrColumnAttribute->type ?: 'string',
                             'length'           => $discrColumnAttribute->length ?: 255,
                             'columnDefinition' => $discrColumnAttribute->columnDefinition,
-                        ],
+                        ]
                     );
                 } else {
                     $metadata->setDiscriminatorColumn(['name' => 'dtype', 'type' => 'string', 'length' => 255]);
@@ -293,7 +305,7 @@ class AttributeDriver implements MappingDriver
                     [
                         'usage'  => (int) constant('Doctrine\ORM\Mapping\ClassMetadata::CACHE_USAGE_' . $cacheAttribute->usage),
                         'region' => $cacheAttribute->region,
-                    ],
+                    ]
                 );
             }
 
@@ -344,13 +356,13 @@ class AttributeDriver implements MappingDriver
                             'sequenceName' => $seqGeneratorAttribute->sequenceName,
                             'allocationSize' => $seqGeneratorAttribute->allocationSize,
                             'initialValue' => $seqGeneratorAttribute->initialValue,
-                        ],
+                        ]
                     );
                 } elseif ($customGeneratorAttribute !== null) {
                     $metadata->setCustomGeneratorDefinition(
                         [
                             'class' => $customGeneratorAttribute->class,
-                        ],
+                        ]
                     );
                 }
             } elseif ($oneToOneAttribute !== null) {

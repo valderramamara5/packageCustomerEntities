@@ -642,15 +642,8 @@ SQL
             $columnArray = $column->toArray();
 
             $columnArray['comment'] = $this->getColumnComment($column);
-
-            if ($columnDiff->fromColumn !== null) {
-                $fromColumn = $columnDiff->fromColumn;
-            } else {
-                $fromColumn = $columnDiff->getOldColumnName();
-            }
-
-            $queryParts[] =  'CHANGE ' . $fromColumn->getQuotedName($this) . ' '
-                . $this->getColumnDeclarationSQL($column->getQuotedName($this), $columnArray);
+            $queryParts[]           =  'CHANGE ' . ($columnDiff->getOldColumnName()->getQuotedName($this)) . ' '
+                    . $this->getColumnDeclarationSQL($column->getQuotedName($this), $columnArray);
         }
 
         foreach ($diff->renamedColumns as $oldColumnName => $column) {

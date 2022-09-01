@@ -17,7 +17,9 @@ use function is_string;
 use function is_subclass_of;
 use function sprintf;
 
-/** @internal */
+/**
+ * @internal
+ */
 final class AttributeReader
 {
     /** @var array<class-string<Annotation>,bool> */
@@ -65,7 +67,7 @@ final class AttributeReader
         if ($this->isRepeatable($annotationName)) {
             throw new LogicException(sprintf(
                 'The attribute "%s" is repeatable. Call getPropertyAnnotationCollection() instead.',
-                $annotationName,
+                $annotationName
             ));
         }
 
@@ -82,12 +84,12 @@ final class AttributeReader
      */
     public function getPropertyAnnotationCollection(
         ReflectionProperty $property,
-        string $annotationName,
+        string $annotationName
     ): RepeatableAttributeCollection {
         if (! $this->isRepeatable($annotationName)) {
             throw new LogicException(sprintf(
                 'The attribute "%s" is not repeatable. Call getPropertyAnnotation() instead.',
-                $annotationName,
+                $annotationName
             ));
         }
 
@@ -132,7 +134,9 @@ final class AttributeReader
         return $instances;
     }
 
-    /** @param class-string<Annotation> $attributeClassName */
+    /**
+     * @param class-string<Annotation> $attributeClassName
+     */
     private function isRepeatable(string $attributeClassName): bool
     {
         if (isset($this->isRepeatableAttribute[$attributeClassName])) {

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Doctrine\ORM\Query\AST;
 
-use Doctrine\ORM\Query\SqlWalker;
-
 /**
  * AssociationPathExpression ::= CollectionValuedPathExpression | SingleValuedAssociationPathExpression
  * SingleValuedPathExpression ::= StateFieldPathExpression | SingleValuedAssociationPathExpression
@@ -33,18 +31,29 @@ class PathExpression extends Node
      */
     public $expectedType;
 
+    /** @var string */
+    public $identificationVariable;
+
+    /** @var string|null */
+    public $field;
+
     /**
      * @param int         $expectedType
      * @param string      $identificationVariable
      * @param string|null $field
      * @psalm-param int-mask-of<self::TYPE_*> $expectedType
      */
-    public function __construct($expectedType, public $identificationVariable, public $field = null)
+    public function __construct($expectedType, $identificationVariable, $field = null)
     {
-        $this->expectedType = $expectedType;
+        $this->expectedType           = $expectedType;
+        $this->identificationVariable = $identificationVariable;
+        $this->field                  = $field;
     }
 
-    public function dispatch(SqlWalker $walker): string
+    /**
+     * {@inheritdoc}
+     */
+    public function dispatch($walker)
     {
         return $walker->walkPathExpression($this);
     }

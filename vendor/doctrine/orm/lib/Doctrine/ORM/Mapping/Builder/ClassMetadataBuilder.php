@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace Doctrine\ORM\Mapping\Builder;
 
+use Doctrine\Deprecations\Deprecation;
 use Doctrine\ORM\Mapping\ClassMetadata;
+use Doctrine\ORM\Mapping\ClassMetadataInfo;
+
+use function get_class;
 
 /**
  * Builder Object for ClassMetadata
@@ -13,15 +17,29 @@ use Doctrine\ORM\Mapping\ClassMetadata;
  */
 class ClassMetadataBuilder
 {
-    /** @var ClassMetadata */
+    /** @var ClassMetadataInfo */
     private $cm;
 
-    public function __construct(ClassMetadata $cm)
+    public function __construct(ClassMetadataInfo $cm)
     {
+        if (! $cm instanceof ClassMetadata) {
+            Deprecation::trigger(
+                'doctrine/orm',
+                'https://github.com/doctrine/orm/pull/249',
+                'Passing an instance of %s to %s is deprecated, please pass a ClassMetadata instance instead.',
+                get_class($cm),
+                __METHOD__,
+                ClassMetadata::class
+            );
+        }
+
         $this->cm = $cm;
     }
 
-    public function getClassMetadata(): ClassMetadata
+    /**
+     * @return ClassMetadataInfo
+     */
+    public function getClassMetadata()
     {
         return $this->cm;
     }
@@ -68,7 +86,7 @@ class ClassMetadataBuilder
                 'fieldName'    => $fieldName,
                 'class'        => $class,
                 'columnPrefix' => $columnPrefix,
-            ],
+            ]
         );
 
         return $this;
@@ -153,6 +171,26 @@ class ClassMetadataBuilder
     }
 
     /**
+     * Adds named query.
+     *
+     * @param string $name
+     * @param string $dqlQuery
+     *
+     * @return $this
+     */
+    public function addNamedQuery($name, $dqlQuery)
+    {
+        $this->cm->addNamedQuery(
+            [
+                'name' => $name,
+                'query' => $dqlQuery,
+            ]
+        );
+
+        return $this;
+    }
+
+    /**
      * Sets class as root of a joined table inheritance hierarchy.
      *
      * @return $this
@@ -192,7 +230,7 @@ class ClassMetadataBuilder
                 'name' => $name,
                 'type' => $type,
                 'length' => $length,
-            ],
+            ]
         );
 
         return $this;
@@ -286,7 +324,7 @@ class ClassMetadataBuilder
             [
                 'fieldName' => $name,
                 'type'      => $type,
-            ],
+            ]
         );
     }
 
@@ -306,7 +344,7 @@ class ClassMetadataBuilder
                 'fieldName'    => $fieldName,
                 'class'        => $class,
                 'columnPrefix' => null,
-            ],
+            ]
         );
     }
 
@@ -348,7 +386,7 @@ class ClassMetadataBuilder
                 'fieldName'    => $name,
                 'targetEntity' => $targetEntity,
             ],
-            ClassMetadata::MANY_TO_ONE,
+            ClassMetadata::MANY_TO_ONE
         );
     }
 
@@ -368,7 +406,7 @@ class ClassMetadataBuilder
                 'fieldName'    => $name,
                 'targetEntity' => $targetEntity,
             ],
-            ClassMetadata::ONE_TO_ONE,
+            ClassMetadata::ONE_TO_ONE
         );
     }
 
@@ -425,7 +463,7 @@ class ClassMetadataBuilder
                 'fieldName'    => $name,
                 'targetEntity' => $targetEntity,
             ],
-            ClassMetadata::MANY_TO_MANY,
+            ClassMetadata::MANY_TO_MANY
         );
     }
 
@@ -482,7 +520,7 @@ class ClassMetadataBuilder
                 'fieldName'    => $name,
                 'targetEntity' => $targetEntity,
             ],
-            ClassMetadata::ONE_TO_MANY,
+            ClassMetadata::ONE_TO_MANY
         );
     }
 

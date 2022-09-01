@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Doctrine\ORM\Tools;
 
 use Doctrine\DBAL\Types\Type;
+use Doctrine\Deprecations\Deprecation;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\ClassMetadata;
+use Doctrine\ORM\Mapping\ClassMetadataInfo;
 
 use function array_diff;
 use function array_key_exists;
@@ -15,6 +17,7 @@ use function array_values;
 use function class_exists;
 use function class_parents;
 use function count;
+use function get_class;
 use function implode;
 use function in_array;
 
@@ -25,8 +28,12 @@ use function in_array;
  */
 class SchemaValidator
 {
-    public function __construct(private readonly EntityManagerInterface $em)
+    /** @var EntityManagerInterface */
+    private $em;
+
+    public function __construct(EntityManagerInterface $em)
     {
+        $this->em = $em;
     }
 
     /**
@@ -41,7 +48,7 @@ class SchemaValidator
      *
      * @psalm-return array<string, list<string>>
      */
-    public function validateMapping(): array
+    public function validateMapping()
     {
         $errors  = [];
         $cmf     = $this->em->getMetadataFactory();
@@ -63,8 +70,19 @@ class SchemaValidator
      * @return string[]
      * @psalm-return list<string>
      */
-    public function validateClass(ClassMetadata $class): array
+    public function validateClass(ClassMetadataInfo $class)
     {
+        if (! $class instanceof ClassMetadata) {
+            Deprecation::trigger(
+                'doctrine/orm',
+                'https://github.com/doctrine/orm/pull/249',
+                'Passing an instance of %s to %s is deprecated, please pass a ClassMetadata instance instead.',
+                get_class($class),
+                __METHOD__,
+                ClassMetadata::class
+            );
+        }
+
         $ce  = [];
         $cmf = $this->em->getMetadataFactory();
 
@@ -253,8 +271,10 @@ class SchemaValidator
 
     /**
      * Checks if the Database Schema is in sync with the current metadata state.
+     *
+     * @return bool
      */
-    public function schemaInSyncWithMetadata(): bool
+    public function schemaInSyncWithMetadata()
     {
         return count($this->getUpdateSchemaList()) === 0;
     }

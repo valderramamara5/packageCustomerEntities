@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Doctrine\ORM\Query\AST;
 
-use Doctrine\ORM\Query\SqlWalker;
-
 /**
  * EmptyCollectionComparisonExpression ::= CollectionValuedPathExpression "IS" ["NOT"] "EMPTY"
  *
@@ -13,16 +11,25 @@ use Doctrine\ORM\Query\SqlWalker;
  */
 class EmptyCollectionComparisonExpression extends Node
 {
+    /** @var PathExpression */
+    public $expression;
+
     /** @var bool */
     public $not;
 
-    /** @param PathExpression $expression */
-    public function __construct(public $expression)
+    /**
+     * @param PathExpression $expression
+     */
+    public function __construct($expression)
     {
+        $this->expression = $expression;
     }
 
-    public function dispatch(SqlWalker $walker): string
+    /**
+     * {@inheritdoc}
+     */
+    public function dispatch($sqlWalker)
     {
-        return $walker->walkEmptyCollectionComparisonExpression($this);
+        return $sqlWalker->walkEmptyCollectionComparisonExpression($this);
     }
 }

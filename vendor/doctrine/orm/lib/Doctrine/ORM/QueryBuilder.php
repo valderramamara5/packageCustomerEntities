@@ -6,7 +6,7 @@ namespace Doctrine\ORM;
 
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Criteria;
-use Doctrine\ORM\Internal\QueryType;
+use Doctrine\Deprecations\Deprecation;
 use Doctrine\ORM\Query\Expr;
 use Doctrine\ORM\Query\Parameter;
 use Doctrine\ORM\Query\QueryExpressionVisitor;
@@ -17,7 +17,8 @@ use function array_keys;
 use function array_merge;
 use function array_unshift;
 use function assert;
-use function count;
+use function func_get_args;
+use function func_num_args;
 use function implode;
 use function in_array;
 use function is_array;
@@ -38,12 +39,34 @@ use function substr;
  */
 class QueryBuilder
 {
+    /** @deprecated */
+    public const SELECT = 0;
+
+    /** @deprecated */
+    public const DELETE = 1;
+
+    /** @deprecated */
+    public const UPDATE = 2;
+
+    /** @deprecated */
+    public const STATE_DIRTY = 0;
+
+    /** @deprecated */
+    public const STATE_CLEAN = 1;
+
+    /**
+     * The EntityManager used by this QueryBuilder.
+     *
+     * @var EntityManagerInterface
+     */
+    private $_em;
+
     /**
      * The array of DQL parts collected.
      *
      * @psalm-var array<string, mixed>
      */
-    private array $dqlParts = [
+    private $_dqlParts = [
         'distinct' => false,
         'select'  => [],
         'from'    => [],
@@ -55,64 +78,91 @@ class QueryBuilder
         'orderBy' => [],
     ];
 
-    private QueryType $type = QueryType::Select;
+    /**
+     * The type of query this is. Can be select, update or delete.
+     *
+     * @var int
+     * @psalm-var self::SELECT|self::DELETE|self::UPDATE
+     */
+    private $_type = self::SELECT;
+
+    /**
+     * The state of the query object. Can be dirty or clean.
+     *
+     * @var int
+     * @psalm-var self::STATE_*
+     */
+    private $_state = self::STATE_CLEAN;
 
     /**
      * The complete DQL string for this query.
+     *
+     * @var string|null
      */
-    private string|null $dql = null;
+    private $_dql;
 
     /**
      * The query parameters.
      *
+     * @var ArrayCollection
      * @psalm-var ArrayCollection<int, Parameter>
      */
-    private ArrayCollection $parameters;
+    private $parameters;
 
     /**
      * The index of the first result to retrieve.
+     *
+     * @var int
      */
-    private int $firstResult = 0;
+    private $_firstResult = 0;
 
     /**
      * The maximum number of results to retrieve.
+     *
+     * @var int|null
      */
-    private int|null $maxResults = null;
+    private $_maxResults = null;
 
     /**
      * Keeps root entity alias names for join entities.
      *
      * @psalm-var array<string, string>
      */
-    private array $joinRootAliases = [];
+    private $joinRootAliases = [];
 
     /**
      * Whether to use second level cache, if available.
+     *
+     * @var bool
      */
-    protected bool $cacheable = false;
+    protected $cacheable = false;
 
     /**
      * Second level cache region name.
+     *
+     * @var string|null
      */
-    protected string|null $cacheRegion = null;
+    protected $cacheRegion;
 
     /**
      * Second level query cache mode.
      *
+     * @var int|null
      * @psalm-var Cache::MODE_*|null
      */
-    protected int|null $cacheMode = null;
+    protected $cacheMode;
 
-    protected int $lifetime = 0;
+    /** @var int */
+    protected $lifetime = 0;
 
     /**
      * Initializes a new <tt>QueryBuilder</tt> that uses the given <tt>EntityManager</tt>.
      *
      * @param EntityManagerInterface $em The EntityManager to use.
      */
-    public function __construct(
-        private readonly EntityManagerInterface $em,
-    ) {
+    public function __construct(EntityManagerInterface $em)
+    {
+        $this->_em        = $em;
         $this->parameters = new ArrayCollection();
     }
 
@@ -130,36 +180,46 @@ class QueryBuilder
      *
      * For more complex expression construction, consider storing the expression
      * builder object in a local variable.
+     *
+     * @return Query\Expr
      */
-    public function expr(): Expr
+    public function expr()
     {
-        return $this->em->getExpressionBuilder();
+        return $this->_em->getExpressionBuilder();
     }
 
     /**
      * Enable/disable second level query (result) caching for this query.
      *
+     * @param bool $cacheable
+     *
      * @return $this
      */
-    public function setCacheable(bool $cacheable): static
+    public function setCacheable($cacheable)
     {
-        $this->cacheable = $cacheable;
+        $this->cacheable = (bool) $cacheable;
 
         return $this;
     }
 
     /**
      * Are the query results enabled for second level cache?
+     *
+     * @return bool
      */
-    public function isCacheable(): bool
+    public function isCacheable()
     {
         return $this->cacheable;
     }
 
-    /** @return $this */
-    public function setCacheRegion(string $cacheRegion): static
+    /**
+     * @param string $cacheRegion
+     *
+     * @return $this
+     */
+    public function setCacheRegion($cacheRegion)
     {
-        $this->cacheRegion = $cacheRegion;
+        $this->cacheRegion = (string) $cacheRegion;
 
         return $this;
     }
@@ -169,12 +229,15 @@ class QueryBuilder
      *
      * @return string|null The cache region name; NULL indicates the default region.
      */
-    public function getCacheRegion(): string|null
+    public function getCacheRegion()
     {
         return $this->cacheRegion;
     }
 
-    public function getLifetime(): int
+    /**
+     * @return int
+     */
+    public function getLifetime()
     {
         return $this->lifetime;
     }
@@ -182,39 +245,86 @@ class QueryBuilder
     /**
      * Sets the life-time for this query into second level cache.
      *
+     * @param int $lifetime
+     *
      * @return $this
      */
-    public function setLifetime(int $lifetime): static
+    public function setLifetime($lifetime)
     {
-        $this->lifetime = $lifetime;
+        $this->lifetime = (int) $lifetime;
 
         return $this;
     }
 
-    /** @psalm-return Cache::MODE_*|null */
-    public function getCacheMode(): int|null
+    /**
+     * @return int|null
+     * @psalm-return Cache::MODE_*|null
+     */
+    public function getCacheMode()
     {
         return $this->cacheMode;
     }
 
     /**
+     * @param int $cacheMode
      * @psalm-param Cache::MODE_* $cacheMode
      *
      * @return $this
      */
-    public function setCacheMode(int $cacheMode): static
+    public function setCacheMode($cacheMode)
     {
-        $this->cacheMode = $cacheMode;
+        $this->cacheMode = (int) $cacheMode;
 
         return $this;
     }
 
     /**
-     * Gets the associated EntityManager for this query builder.
+     * Gets the type of the currently built query.
+     *
+     * @deprecated If necessary, track the type of the query being built outside of the builder.
+     *
+     * @return int
+     * @psalm-return self::SELECT|self::DELETE|self::UPDATE
      */
-    public function getEntityManager(): EntityManagerInterface
+    public function getType()
     {
-        return $this->em;
+        Deprecation::trigger(
+            'doctrine/dbal',
+            'https://github.com/doctrine/orm/pull/9945',
+            'Relying on the type of the query being built is deprecated.'
+            . ' If necessary, track the type of the query being built outside of the builder.'
+        );
+
+        return $this->_type;
+    }
+
+    /**
+     * Gets the associated EntityManager for this query builder.
+     *
+     * @return EntityManagerInterface
+     */
+    public function getEntityManager()
+    {
+        return $this->_em;
+    }
+
+    /**
+     * Gets the state of this query builder instance.
+     *
+     * @deprecated The builder state is an internal concern.
+     *
+     * @return int Either QueryBuilder::STATE_DIRTY or QueryBuilder::STATE_CLEAN.
+     * @psalm-return self::STATE_*
+     */
+    public function getState()
+    {
+        Deprecation::trigger(
+            'doctrine/dbal',
+            'https://github.com/doctrine/orm/pull/9945',
+            'Relying on the query builder state is deprecated as it is an internal concern.'
+        );
+
+        return $this->_state;
     }
 
     /**
@@ -226,14 +336,34 @@ class QueryBuilder
      *         ->from('User', 'u');
      *     echo $qb->getDql(); // SELECT u FROM User u
      * </code>
+     *
+     * @return string The DQL query string.
      */
-    public function getDQL(): string
+    public function getDQL()
     {
-        return $this->dql ??= match ($this->type) {
-            QueryType::Select => $this->getDQLForSelect(),
-            QueryType::Delete => $this->getDQLForDelete(),
-            QueryType::Update => $this->getDQLForUpdate(),
-        };
+        if ($this->_dql !== null && $this->_state === self::STATE_CLEAN) {
+            return $this->_dql;
+        }
+
+        switch ($this->_type) {
+            case self::DELETE:
+                $dql = $this->getDQLForDelete();
+                break;
+
+            case self::UPDATE:
+                $dql = $this->getDQLForUpdate();
+                break;
+
+            case self::SELECT:
+            default:
+                $dql = $this->getDQLForSelect();
+                break;
+        }
+
+        $this->_state = self::STATE_CLEAN;
+        $this->_dql   = $dql;
+
+        return $dql;
     }
 
     /**
@@ -246,14 +376,16 @@ class QueryBuilder
      *     $q = $qb->getQuery();
      *     $results = $q->execute();
      * </code>
+     *
+     * @return Query
      */
-    public function getQuery(): Query
+    public function getQuery()
     {
         $parameters = clone $this->parameters;
-        $query      = $this->em->createQuery($this->getDQL())
+        $query      = $this->_em->createQuery($this->getDQL())
             ->setParameters($parameters)
-            ->setFirstResult($this->firstResult)
-            ->setMaxResults($this->maxResults);
+            ->setFirstResult($this->_firstResult)
+            ->setMaxResults($this->_maxResults);
 
         if ($this->lifetime) {
             $query->setLifetime($this->lifetime);
@@ -311,9 +443,11 @@ class QueryBuilder
      *
      * @deprecated Please use $qb->getRootAliases() instead.
      *
+     * @return string
+     *
      * @throws RuntimeException
      */
-    public function getRootAlias(): string
+    public function getRootAlias()
     {
         $aliases = $this->getRootAliases();
 
@@ -339,17 +473,15 @@ class QueryBuilder
      * @return string[]
      * @psalm-return list<string>
      */
-    public function getRootAliases(): array
+    public function getRootAliases()
     {
         $aliases = [];
 
-        foreach ($this->dqlParts['from'] as &$fromClause) {
+        foreach ($this->_dqlParts['from'] as &$fromClause) {
             if (is_string($fromClause)) {
                 $spacePos = strrpos($fromClause, ' ');
-
-                /** @psalm-var class-string $from */
-                $from  = substr($fromClause, 0, $spacePos);
-                $alias = substr($fromClause, $spacePos + 1);
+                $from     = substr($fromClause, 0, $spacePos);
+                $alias    = substr($fromClause, $spacePos + 1);
 
                 $fromClause = new Query\Expr\From($from, $alias);
             }
@@ -376,13 +508,13 @@ class QueryBuilder
      * @return string[]
      * @psalm-return list<string>
      */
-    public function getAllAliases(): array
+    public function getAllAliases()
     {
         return array_merge($this->getRootAliases(), array_keys($this->joinRootAliases));
     }
 
     /**
-     * Gets the root entities of the query. This is the entity classes involved
+     * Gets the root entities of the query. This is the entity aliases involved
      * in the construction of the query.
      *
      * <code>
@@ -394,19 +526,17 @@ class QueryBuilder
      * </code>
      *
      * @return string[]
-     * @psalm-return list<class-string>
+     * @psalm-return list<string>
      */
-    public function getRootEntities(): array
+    public function getRootEntities()
     {
         $entities = [];
 
-        foreach ($this->dqlParts['from'] as &$fromClause) {
+        foreach ($this->_dqlParts['from'] as &$fromClause) {
             if (is_string($fromClause)) {
                 $spacePos = strrpos($fromClause, ' ');
-
-                /** @psalm-var class-string $from */
-                $from  = substr($fromClause, 0, $spacePos);
-                $alias = substr($fromClause, $spacePos + 1);
+                $from     = substr($fromClause, 0, $spacePos);
+                $alias    = substr($fromClause, $spacePos + 1);
 
                 $fromClause = new Query\Expr\From($from, $alias);
             }
@@ -428,12 +558,13 @@ class QueryBuilder
      *         ->setParameter('user_id', 1);
      * </code>
      *
-     * @param string|int      $key  The parameter position or name.
-     * @param string|int|null $type ParameterType::* or \Doctrine\DBAL\Types\Type::* constant
+     * @param string|int      $key   The parameter position or name.
+     * @param mixed           $value The parameter value.
+     * @param string|int|null $type  ParameterType::* or \Doctrine\DBAL\Types\Type::* constant
      *
      * @return $this
      */
-    public function setParameter(string|int $key, mixed $value, string|int|null $type = null): static
+    public function setParameter($key, $value, $type = null)
     {
         $existingParameter = $this->getParameter($key);
 
@@ -462,12 +593,27 @@ class QueryBuilder
      *        )));
      * </code>
      *
-     * @psalm-param ArrayCollection<int, Parameter> $parameters
+     * @param ArrayCollection|mixed[] $parameters The query parameters to set.
+     * @psalm-param ArrayCollection<int, Parameter>|mixed[] $parameters
      *
      * @return $this
      */
-    public function setParameters(ArrayCollection $parameters): static
+    public function setParameters($parameters)
     {
+        // BC compatibility with 2.3-
+        if (is_array($parameters)) {
+            /** @psalm-var ArrayCollection<int, Parameter> $parameterCollection */
+            $parameterCollection = new ArrayCollection();
+
+            foreach ($parameters as $key => $value) {
+                $parameter = new Parameter($key, $value);
+
+                $parameterCollection->add($parameter);
+            }
+
+            $parameters = $parameterCollection;
+        }
+
         $this->parameters = $parameters;
 
         return $this;
@@ -476,22 +622,31 @@ class QueryBuilder
     /**
      * Gets all defined query parameters for the query being constructed.
      *
+     * @return ArrayCollection The currently defined query parameters.
      * @psalm-return ArrayCollection<int, Parameter>
      */
-    public function getParameters(): ArrayCollection
+    public function getParameters()
     {
         return $this->parameters;
     }
 
     /**
      * Gets a (previously set) query parameter of the query being constructed.
+     *
+     * @param string|int $key The key (index or name) of the bound parameter.
+     *
+     * @return Parameter|null The value of the bound parameter.
      */
-    public function getParameter(string|int $key): Parameter|null
+    public function getParameter($key)
     {
         $key = Parameter::normalizeName($key);
 
         $filteredParameters = $this->parameters->filter(
-            static fn (Parameter $parameter): bool => $key === $parameter->getName()
+            static function (Parameter $parameter) use ($key): bool {
+                $parameterName = $parameter->getName();
+
+                return $key === $parameterName;
+            }
         );
 
         return ! $filteredParameters->isEmpty() ? $filteredParameters->first() : null;
@@ -500,11 +655,13 @@ class QueryBuilder
     /**
      * Sets the position of the first result to retrieve (the "offset").
      *
+     * @param int|null $firstResult The first result to return.
+     *
      * @return $this
      */
-    public function setFirstResult(int|null $firstResult): static
+    public function setFirstResult($firstResult)
     {
-        $this->firstResult = (int) $firstResult;
+        $this->_firstResult = (int) $firstResult;
 
         return $this;
     }
@@ -512,20 +669,28 @@ class QueryBuilder
     /**
      * Gets the position of the first result the query object was set to retrieve (the "offset").
      * Returns NULL if {@link setFirstResult} was not applied to this QueryBuilder.
+     *
+     * @return int|null The position of the first result.
      */
-    public function getFirstResult(): int|null
+    public function getFirstResult()
     {
-        return $this->firstResult;
+        return $this->_firstResult;
     }
 
     /**
      * Sets the maximum number of results to retrieve (the "limit").
      *
+     * @param int|null $maxResults The maximum number of results to retrieve.
+     *
      * @return $this
      */
-    public function setMaxResults(int|null $maxResults): static
+    public function setMaxResults($maxResults)
     {
-        $this->maxResults = $maxResults;
+        if ($maxResults !== null) {
+            $maxResults = (int) $maxResults;
+        }
+
+        $this->_maxResults = $maxResults;
 
         return $this;
     }
@@ -533,10 +698,12 @@ class QueryBuilder
     /**
      * Gets the maximum number of results the query object was set to retrieve (the "limit").
      * Returns NULL if {@link setMaxResults} was not applied to this query builder.
+     *
+     * @return int|null Maximum number of results.
      */
-    public function getMaxResults(): int|null
+    public function getMaxResults()
     {
-        return $this->maxResults;
+        return $this->_maxResults;
     }
 
     /**
@@ -545,20 +712,23 @@ class QueryBuilder
      * The available parts are: 'select', 'from', 'join', 'set', 'where',
      * 'groupBy', 'having' and 'orderBy'.
      *
+     * @param string              $dqlPartName The DQL part name.
+     * @param string|object|array $dqlPart     An Expr object.
+     * @param bool                $append      Whether to append (true) or replace (false).
      * @psalm-param string|object|list<string>|array{join: array<int|string, object>} $dqlPart
      *
      * @return $this
      */
-    public function add(string $dqlPartName, string|object|array $dqlPart, bool $append = false): static
+    public function add($dqlPartName, $dqlPart, $append = false)
     {
         if ($append && ($dqlPartName === 'where' || $dqlPartName === 'having')) {
             throw new InvalidArgumentException(
                 "Using \$append = true does not have an effect with 'where' or 'having' " .
-                'parts. See QueryBuilder#andWhere() for an example for correct usage.',
+                'parts. See QueryBuilder#andWhere() for an example for correct usage.'
             );
         }
 
-        $isMultiple = is_array($this->dqlParts[$dqlPartName])
+        $isMultiple = is_array($this->_dqlParts[$dqlPartName])
             && ! ($dqlPartName === 'join' && ! $append);
 
         // Allow adding any part retrieved from self::getDQLParts().
@@ -584,15 +754,15 @@ class QueryBuilder
             if (is_array($dqlPart)) {
                 $key = key($dqlPart);
 
-                $this->dqlParts[$dqlPartName][$key][] = $dqlPart[$key];
+                $this->_dqlParts[$dqlPartName][$key][] = $dqlPart[$key];
             } else {
-                $this->dqlParts[$dqlPartName][] = $dqlPart;
+                $this->_dqlParts[$dqlPartName][] = $dqlPart;
             }
         } else {
-            $this->dqlParts[$dqlPartName] = $isMultiple ? [$dqlPart] : $dqlPart;
+            $this->_dqlParts[$dqlPartName] = $isMultiple ? [$dqlPart] : $dqlPart;
         }
 
-        $this->dql = null;
+        $this->_state = self::STATE_DIRTY;
 
         return $this;
     }
@@ -608,17 +778,21 @@ class QueryBuilder
      *         ->leftJoin('u.Phonenumbers', 'p');
      * </code>
      *
+     * @param mixed $select The selection expressions.
+     *
      * @return $this
      */
-    public function select(mixed ...$select): static
+    public function select($select = null)
     {
-        $this->type = QueryType::Select;
+        $this->_type = self::SELECT;
 
-        if ($select === []) {
+        if (empty($select)) {
             return $this;
         }
 
-        return $this->add('select', new Expr\Select($select), false);
+        $selects = is_array($select) ? $select : func_get_args();
+
+        return $this->add('select', new Expr\Select($selects), false);
     }
 
     /**
@@ -631,11 +805,13 @@ class QueryBuilder
      *         ->from('User', 'u');
      * </code>
      *
+     * @param bool $flag
+     *
      * @return $this
      */
-    public function distinct(bool $flag = true): static
+    public function distinct($flag = true)
     {
-        $this->dqlParts['distinct'] = $flag;
+        $this->_dqlParts['distinct'] = (bool) $flag;
 
         return $this;
     }
@@ -651,17 +827,21 @@ class QueryBuilder
      *         ->leftJoin('u.Phonenumbers', 'p');
      * </code>
      *
+     * @param mixed $select The selection expression.
+     *
      * @return $this
      */
-    public function addSelect(mixed ...$select): static
+    public function addSelect($select = null)
     {
-        $this->type = QueryType::Select;
+        $this->_type = self::SELECT;
 
-        if ($select === []) {
+        if (empty($select)) {
             return $this;
         }
 
-        return $this->add('select', new Expr\Select($select), true);
+        $selects = is_array($select) ? $select : func_get_args();
+
+        return $this->add('select', new Expr\Select($selects), true);
     }
 
     /**
@@ -675,25 +855,25 @@ class QueryBuilder
      *         ->setParameter('user_id', 1);
      * </code>
      *
-     * @param class-string|null $delete The class/type whose instances are subject to the deletion.
-     * @param string|null       $alias  The class/type alias used in the constructed query.
+     * @param string|null $delete The class/type whose instances are subject to the deletion.
+     * @param string|null $alias  The class/type alias used in the constructed query.
      *
      * @return $this
      */
-    public function delete(string|null $delete = null, string|null $alias = null): static
+    public function delete($delete = null, $alias = null)
     {
-        $this->type = QueryType::Delete;
+        $this->_type = self::DELETE;
 
         if (! $delete) {
             return $this;
         }
 
         if (! $alias) {
-            throw new InvalidArgumentException(sprintf(
-                '%s(): The alias for entity %s must not be omitted.',
-                __METHOD__,
-                $delete,
-            ));
+            Deprecation::trigger(
+                'doctrine/orm',
+                'https://github.com/doctrine/orm/issues/9733',
+                'Omitting the alias is deprecated and will throw an exception in Doctrine 3.0.'
+            );
         }
 
         return $this->add('from', new Expr\From($delete, $alias));
@@ -710,25 +890,25 @@ class QueryBuilder
      *         ->where('u.id = ?2');
      * </code>
      *
-     * @param class-string|null $update The class/type whose instances are subject to the update.
-     * @param string|null       $alias  The class/type alias used in the constructed query.
+     * @param string|null $update The class/type whose instances are subject to the update.
+     * @param string|null $alias  The class/type alias used in the constructed query.
      *
      * @return $this
      */
-    public function update(string|null $update = null, string|null $alias = null): static
+    public function update($update = null, $alias = null)
     {
-        $this->type = QueryType::Update;
+        $this->_type = self::UPDATE;
 
         if (! $update) {
             return $this;
         }
 
         if (! $alias) {
-            throw new InvalidArgumentException(sprintf(
-                '%s(): The alias for entity %s must not be omitted.',
-                __METHOD__,
-                $update,
-            ));
+            Deprecation::trigger(
+                'doctrine/orm',
+                'https://github.com/doctrine/orm/issues/9733',
+                'Omitting the alias is deprecated and will throw an exception in Doctrine 3.0.'
+            );
         }
 
         return $this->add('from', new Expr\From($update, $alias));
@@ -744,13 +924,13 @@ class QueryBuilder
      *         ->from('User', 'u');
      * </code>
      *
-     * @param class-string $from    The class name.
-     * @param string       $alias   The alias of the class.
-     * @param string|null  $indexBy The index for the from.
+     * @param string      $from    The class name.
+     * @param string      $alias   The alias of the class.
+     * @param string|null $indexBy The index for the from.
      *
      * @return $this
      */
-    public function from(string $from, string $alias, string|null $indexBy = null): static
+    public function from($from, $alias, $indexBy = null)
     {
         return $this->add('from', new Expr\From($from, $alias, $indexBy), true);
     }
@@ -771,21 +951,24 @@ class QueryBuilder
      *         ->from('User', 'u', 'u.id');
      * </code>
      *
+     * @param string $alias   The root alias of the class.
+     * @param string $indexBy The index for the from.
+     *
      * @return $this
      *
      * @throws Query\QueryException
      */
-    public function indexBy(string $alias, string $indexBy): static
+    public function indexBy($alias, $indexBy)
     {
         $rootAliases = $this->getRootAliases();
 
         if (! in_array($alias, $rootAliases, true)) {
             throw new Query\QueryException(
-                sprintf('Specified root alias %s must be set before invoking indexBy().', $alias),
+                sprintf('Specified root alias %s must be set before invoking indexBy().', $alias)
             );
         }
 
-        foreach ($this->dqlParts['from'] as &$fromClause) {
+        foreach ($this->_dqlParts['from'] as &$fromClause) {
             assert($fromClause instanceof Expr\From);
             if ($fromClause->getAlias() !== $alias) {
                 continue;
@@ -811,17 +994,17 @@ class QueryBuilder
      *         ->join('u.Phonenumbers', 'p', Expr\Join::WITH, 'p.is_primary = 1');
      * </code>
      *
+     * @param string                                     $join          The relationship to join.
+     * @param string                                     $alias         The alias of the join.
+     * @param string|null                                $conditionType The condition type constant. Either ON or WITH.
+     * @param string|Expr\Comparison|Expr\Composite|null $condition     The condition for the join.
+     * @param string|null                                $indexBy       The index for the join.
      * @psalm-param Expr\Join::ON|Expr\Join::WITH|null $conditionType
      *
      * @return $this
      */
-    public function join(
-        string $join,
-        string $alias,
-        string|null $conditionType = null,
-        string|Expr\Composite|Expr\Comparison|null $condition = null,
-        string|null $indexBy = null,
-    ): static {
+    public function join($join, $alias, $conditionType = null, $condition = null, $indexBy = null)
+    {
         return $this->innerJoin($join, $alias, $conditionType, $condition, $indexBy);
     }
 
@@ -838,17 +1021,17 @@ class QueryBuilder
      *         ->from('User', 'u')
      *         ->innerJoin('u.Phonenumbers', 'p', Expr\Join::WITH, 'p.is_primary = 1');
      *
+     * @param string                                     $join          The relationship to join.
+     * @param string                                     $alias         The alias of the join.
+     * @param string|null                                $conditionType The condition type constant. Either ON or WITH.
+     * @param string|Expr\Comparison|Expr\Composite|null $condition     The condition for the join.
+     * @param string|null                                $indexBy       The index for the join.
      * @psalm-param Expr\Join::ON|Expr\Join::WITH|null $conditionType
      *
      * @return $this
      */
-    public function innerJoin(
-        string $join,
-        string $alias,
-        string|null $conditionType = null,
-        string|Expr\Composite|Expr\Comparison|null $condition = null,
-        string|null $indexBy = null,
-    ): static {
+    public function innerJoin($join, $alias, $conditionType = null, $condition = null, $indexBy = null)
+    {
         $parentAlias = substr($join, 0, (int) strpos($join, '.'));
 
         $rootAlias = $this->findRootAlias($alias, $parentAlias);
@@ -859,7 +1042,7 @@ class QueryBuilder
             $alias,
             $conditionType,
             $condition,
-            $indexBy,
+            $indexBy
         );
 
         return $this->add('join', [$rootAlias => $join], true);
@@ -879,17 +1062,17 @@ class QueryBuilder
      *         ->leftJoin('u.Phonenumbers', 'p', Expr\Join::WITH, 'p.is_primary = 1');
      * </code>
      *
+     * @param string                                     $join          The relationship to join.
+     * @param string                                     $alias         The alias of the join.
+     * @param string|null                                $conditionType The condition type constant. Either ON or WITH.
+     * @param string|Expr\Comparison|Expr\Composite|null $condition     The condition for the join.
+     * @param string|null                                $indexBy       The index for the join.
      * @psalm-param Expr\Join::ON|Expr\Join::WITH|null $conditionType
      *
      * @return $this
      */
-    public function leftJoin(
-        string $join,
-        string $alias,
-        string|null $conditionType = null,
-        string|Expr\Composite|Expr\Comparison|null $condition = null,
-        string|null $indexBy = null,
-    ): static {
+    public function leftJoin($join, $alias, $conditionType = null, $condition = null, $indexBy = null)
+    {
         $parentAlias = substr($join, 0, (int) strpos($join, '.'));
 
         $rootAlias = $this->findRootAlias($alias, $parentAlias);
@@ -900,7 +1083,7 @@ class QueryBuilder
             $alias,
             $conditionType,
             $condition,
-            $indexBy,
+            $indexBy
         );
 
         return $this->add('join', [$rootAlias => $join], true);
@@ -916,9 +1099,12 @@ class QueryBuilder
      *         ->where('u.id = ?2');
      * </code>
      *
+     * @param string $key   The key/field to set.
+     * @param mixed  $value The value, expression, placeholder, etc.
+     *
      * @return $this
      */
-    public function set(string $key, mixed $value): static
+    public function set($key, $value)
     {
         return $this->add('set', new Expr\Comparison($key, Expr\Comparison::EQ, $value), true);
     }
@@ -945,12 +1131,14 @@ class QueryBuilder
      *         ->where($or);
      * </code>
      *
+     * @param mixed $predicates The restriction predicates.
+     *
      * @return $this
      */
-    public function where(mixed ...$predicates): static
+    public function where($predicates)
     {
-        if (! (count($predicates) === 1 && $predicates[0] instanceof Expr\Composite)) {
-            $predicates = new Expr\Andx($predicates);
+        if (! (func_num_args() === 1 && $predicates instanceof Expr\Composite)) {
+            $predicates = new Expr\Andx(func_get_args());
         }
 
         return $this->add('where', $predicates);
@@ -970,20 +1158,23 @@ class QueryBuilder
      *
      * @see where()
      *
+     * @param mixed $where The query restrictions.
+     *
      * @return $this
      */
-    public function andWhere(mixed ...$where): static
+    public function andWhere()
     {
-        $dql = $this->getDQLPart('where');
+        $args  = func_get_args();
+        $where = $this->getDQLPart('where');
 
-        if ($dql instanceof Expr\Andx) {
-            $dql->addMultiple($where);
+        if ($where instanceof Expr\Andx) {
+            $where->addMultiple($args);
         } else {
-            array_unshift($where, $dql);
-            $dql = new Expr\Andx($where);
+            array_unshift($args, $where);
+            $where = new Expr\Andx($args);
         }
 
-        return $this->add('where', $dql);
+        return $this->add('where', $where);
     }
 
     /**
@@ -1000,20 +1191,23 @@ class QueryBuilder
      *
      * @see where()
      *
+     * @param mixed $where The WHERE statement.
+     *
      * @return $this
      */
-    public function orWhere(mixed ...$where): static
+    public function orWhere()
     {
-        $dql = $this->getDQLPart('where');
+        $args  = func_get_args();
+        $where = $this->getDQLPart('where');
 
-        if ($dql instanceof Expr\Orx) {
-            $dql->addMultiple($where);
+        if ($where instanceof Expr\Orx) {
+            $where->addMultiple($args);
         } else {
-            array_unshift($where, $dql);
-            $dql = new Expr\Orx($where);
+            array_unshift($args, $where);
+            $where = new Expr\Orx($args);
         }
 
-        return $this->add('where', $dql);
+        return $this->add('where', $where);
     }
 
     /**
@@ -1027,11 +1221,13 @@ class QueryBuilder
      *         ->groupBy('u.id');
      * </code>
      *
+     * @param string $groupBy The grouping expression.
+     *
      * @return $this
      */
-    public function groupBy(string ...$groupBy): static
+    public function groupBy($groupBy)
     {
-        return $this->add('groupBy', new Expr\GroupBy($groupBy));
+        return $this->add('groupBy', new Expr\GroupBy(func_get_args()));
     }
 
     /**
@@ -1045,23 +1241,27 @@ class QueryBuilder
      *         ->addGroupBy('u.createdAt');
      * </code>
      *
+     * @param string $groupBy The grouping expression.
+     *
      * @return $this
      */
-    public function addGroupBy(string ...$groupBy): static
+    public function addGroupBy($groupBy)
     {
-        return $this->add('groupBy', new Expr\GroupBy($groupBy), true);
+        return $this->add('groupBy', new Expr\GroupBy(func_get_args()), true);
     }
 
     /**
      * Specifies a restriction over the groups of the query.
      * Replaces any previous having restrictions, if any.
      *
+     * @param mixed $having The restriction over the groups.
+     *
      * @return $this
      */
-    public function having(mixed ...$having): static
+    public function having($having)
     {
-        if (! (count($having) === 1 && ($having[0] instanceof Expr\Andx || $having[0] instanceof Expr\Orx))) {
-            $having = new Expr\Andx($having);
+        if (! (func_num_args() === 1 && ($having instanceof Expr\Andx || $having instanceof Expr\Orx))) {
+            $having = new Expr\Andx(func_get_args());
         }
 
         return $this->add('having', $having);
@@ -1071,49 +1271,58 @@ class QueryBuilder
      * Adds a restriction over the groups of the query, forming a logical
      * conjunction with any existing having restrictions.
      *
+     * @param mixed $having The restriction to append.
+     *
      * @return $this
      */
-    public function andHaving(mixed ...$having): static
+    public function andHaving($having)
     {
-        $dql = $this->getDQLPart('having');
+        $args   = func_get_args();
+        $having = $this->getDQLPart('having');
 
-        if ($dql instanceof Expr\Andx) {
-            $dql->addMultiple($having);
+        if ($having instanceof Expr\Andx) {
+            $having->addMultiple($args);
         } else {
-            array_unshift($having, $dql);
-            $dql = new Expr\Andx($having);
+            array_unshift($args, $having);
+            $having = new Expr\Andx($args);
         }
 
-        return $this->add('having', $dql);
+        return $this->add('having', $having);
     }
 
     /**
      * Adds a restriction over the groups of the query, forming a logical
      * disjunction with any existing having restrictions.
      *
+     * @param mixed $having The restriction to add.
+     *
      * @return $this
      */
-    public function orHaving(mixed ...$having): static
+    public function orHaving($having)
     {
-        $dql = $this->getDQLPart('having');
+        $args   = func_get_args();
+        $having = $this->getDQLPart('having');
 
-        if ($dql instanceof Expr\Orx) {
-            $dql->addMultiple($having);
+        if ($having instanceof Expr\Orx) {
+            $having->addMultiple($args);
         } else {
-            array_unshift($having, $dql);
-            $dql = new Expr\Orx($having);
+            array_unshift($args, $having);
+            $having = new Expr\Orx($args);
         }
 
-        return $this->add('having', $dql);
+        return $this->add('having', $having);
     }
 
     /**
      * Specifies an ordering for the query results.
      * Replaces any previously specified orderings, if any.
      *
+     * @param string|Expr\OrderBy $sort  The ordering expression.
+     * @param string|null         $order The ordering direction.
+     *
      * @return $this
      */
-    public function orderBy(string|Expr\OrderBy $sort, string|null $order = null): static
+    public function orderBy($sort, $order = null)
     {
         $orderBy = $sort instanceof Expr\OrderBy ? $sort : new Expr\OrderBy($sort, $order);
 
@@ -1123,9 +1332,12 @@ class QueryBuilder
     /**
      * Adds an ordering to the query results.
      *
+     * @param string|Expr\OrderBy $sort  The ordering expression.
+     * @param string|null         $order The ordering direction.
+     *
      * @return $this
      */
-    public function addOrderBy(string|Expr\OrderBy $sort, string|null $order = null): static
+    public function addOrderBy($sort, $order = null)
     {
         $orderBy = $sort instanceof Expr\OrderBy ? $sort : new Expr\OrderBy($sort, $order);
 
@@ -1143,7 +1355,7 @@ class QueryBuilder
      *
      * @throws Query\QueryException
      */
-    public function addCriteria(Criteria $criteria): static
+    public function addCriteria(Criteria $criteria)
     {
         $allAliases = $this->getAllAliases();
         if (! isset($allAliases[0])) {
@@ -1194,10 +1406,14 @@ class QueryBuilder
 
     /**
      * Gets a query part by its name.
+     *
+     * @param string $queryPartName
+     *
+     * @return mixed $queryPart
      */
-    public function getDQLPart(string $queryPartName): mixed
+    public function getDQLPart($queryPartName)
     {
-        return $this->dqlParts[$queryPartName];
+        return $this->_dqlParts[$queryPartName];
     }
 
     /**
@@ -1205,9 +1421,9 @@ class QueryBuilder
      *
      * @psalm-return array<string, mixed> $dqlParts
      */
-    public function getDQLParts(): array
+    public function getDQLParts()
     {
-        return $this->dqlParts;
+        return $this->_dqlParts;
     }
 
     private function getDQLForDelete(): string
@@ -1230,7 +1446,7 @@ class QueryBuilder
     private function getDQLForSelect(): string
     {
         $dql = 'SELECT'
-             . ($this->dqlParts['distinct'] === true ? ' DISTINCT' : '')
+             . ($this->_dqlParts['distinct'] === true ? ' DISTINCT' : '')
              . $this->getReducedDQLQueryPart('select', ['pre' => ' ', 'separator' => ', ']);
 
         $fromParts   = $this->getDQLPart('from');
@@ -1263,7 +1479,9 @@ class QueryBuilder
         return $dql;
     }
 
-    /** @psalm-param array<string, mixed> $options */
+    /**
+     * @psalm-param array<string, mixed> $options
+     */
     private function getReducedDQLQueryPart(string $queryPartName, array $options = []): string
     {
         $queryPart = $this->getDQLPart($queryPartName);
@@ -1285,10 +1503,10 @@ class QueryBuilder
      *
      * @return $this
      */
-    public function resetDQLParts(array|null $parts = null): static
+    public function resetDQLParts($parts = null)
     {
         if ($parts === null) {
-            $parts = array_keys($this->dqlParts);
+            $parts = array_keys($this->_dqlParts);
         }
 
         foreach ($parts as $part) {
@@ -1301,12 +1519,14 @@ class QueryBuilder
     /**
      * Resets single DQL part.
      *
+     * @param string $part
+     *
      * @return $this
      */
-    public function resetDQLPart(string $part): static
+    public function resetDQLPart($part)
     {
-        $this->dqlParts[$part] = is_array($this->dqlParts[$part]) ? [] : null;
-        $this->dql             = null;
+        $this->_dqlParts[$part] = is_array($this->_dqlParts[$part]) ? [] : null;
+        $this->_state           = self::STATE_DIRTY;
 
         return $this;
     }
@@ -1314,8 +1534,10 @@ class QueryBuilder
     /**
      * Gets a string representation of this QueryBuilder which corresponds to
      * the final DQL query being constructed.
+     *
+     * @return string The string representation of this QueryBuilder.
      */
-    public function __toString(): string
+    public function __toString()
     {
         return $this->getDQL();
     }
@@ -1327,15 +1549,15 @@ class QueryBuilder
      */
     public function __clone()
     {
-        foreach ($this->dqlParts as $part => $elements) {
-            if (is_array($this->dqlParts[$part])) {
-                foreach ($this->dqlParts[$part] as $idx => $element) {
+        foreach ($this->_dqlParts as $part => $elements) {
+            if (is_array($this->_dqlParts[$part])) {
+                foreach ($this->_dqlParts[$part] as $idx => $element) {
                     if (is_object($element)) {
-                        $this->dqlParts[$part][$idx] = clone $element;
+                        $this->_dqlParts[$part][$idx] = clone $element;
                     }
                 }
             } elseif (is_object($elements)) {
-                $this->dqlParts[$part] = clone $elements;
+                $this->_dqlParts[$part] = clone $elements;
             }
         }
 

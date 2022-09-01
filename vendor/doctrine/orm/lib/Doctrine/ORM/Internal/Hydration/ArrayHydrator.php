@@ -6,8 +6,8 @@ namespace Doctrine\ORM\Internal\Hydration;
 
 use Doctrine\ORM\Mapping\ClassMetadata;
 
-use function array_key_last;
 use function count;
+use function end;
 use function is_array;
 use function key;
 use function reset;
@@ -19,22 +19,27 @@ use function reset;
 class ArrayHydrator extends AbstractHydrator
 {
     /** @var array<string,bool> */
-    private array $_rootAliases = [];
+    private $_rootAliases = [];
 
-    private bool $_isSimpleQuery = false;
-
-    /** @var mixed[] */
-    private array $_identifierMap = [];
+    /** @var bool */
+    private $_isSimpleQuery = false;
 
     /** @var mixed[] */
-    private array $_resultPointers = [];
+    private $_identifierMap = [];
+
+    /** @var mixed[] */
+    private $_resultPointers = [];
 
     /** @var array<string,string> */
-    private array $_idTemplate = [];
+    private $_idTemplate = [];
 
-    private int $_resultCounter = 0;
+    /** @var int */
+    private $_resultCounter = 0;
 
-    protected function prepare(): void
+    /**
+     * {@inheritdoc}
+     */
+    protected function prepare()
     {
         $this->_isSimpleQuery = count($this->resultSetMapping()->aliasMap) <= 1;
 
@@ -48,7 +53,7 @@ class ArrayHydrator extends AbstractHydrator
     /**
      * {@inheritdoc}
      */
-    protected function hydrateAllData(): array
+    protected function hydrateAllData()
     {
         $result = [];
 
@@ -62,7 +67,7 @@ class ArrayHydrator extends AbstractHydrator
     /**
      * {@inheritdoc}
      */
-    protected function hydrateRowData(array $row, array &$result): void
+    protected function hydrateRowData(array $row, array &$result)
     {
         // 1) Initialize
         $id                 = $this->_idTemplate; // initialize the id-memory
@@ -124,7 +129,9 @@ class ArrayHydrator extends AbstractHydrator
                                 $baseElement[$relationAlias][] = $element;
                             }
 
-                            $this->_identifierMap[$path][$id[$parent]][$id[$dqlAlias]] = array_key_last($baseElement[$relationAlias]);
+                            end($baseElement[$relationAlias]);
+
+                            $this->_identifierMap[$path][$id[$parent]][$id[$dqlAlias]] = key($baseElement[$relationAlias]);
                         }
                     }
                 } else {
@@ -235,15 +242,15 @@ class ArrayHydrator extends AbstractHydrator
      * Updates the result pointer for an Entity. The result pointers point to the
      * last seen instance of each Entity type. This is used for graph construction.
      *
-     * @param mixed[]|null     $coll     The element.
-     * @param string|int|false $index    Index of the element in the collection.
-     * @param bool             $oneToOne Whether it is a single-valued association or not.
+     * @param mixed[]|null $coll     The element.
+     * @param bool|int     $index    Index of the element in the collection.
+     * @param bool         $oneToOne Whether it is a single-valued association or not.
      */
     private function updateResultPointer(
-        array|null &$coll,
-        string|int|false $index,
+        ?array &$coll,
+        $index,
         string $dqlAlias,
-        bool $oneToOne,
+        bool $oneToOne
     ): void {
         if ($coll === null) {
             unset($this->_resultPointers[$dqlAlias]); // Ticket #1228
@@ -267,6 +274,7 @@ class ArrayHydrator extends AbstractHydrator
             return;
         }
 
-        $this->_resultPointers[$dqlAlias] =& $coll[array_key_last($coll)];
+        end($coll);
+        $this->_resultPointers[$dqlAlias] =& $coll[key($coll)];
     }
 }

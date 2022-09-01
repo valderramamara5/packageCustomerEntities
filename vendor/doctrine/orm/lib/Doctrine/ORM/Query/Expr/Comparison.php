@@ -18,6 +18,15 @@ class Comparison
     public const GT  = '>';
     public const GTE = '>=';
 
+    /** @var mixed */
+    protected $leftExpr;
+
+    /** @var string */
+    protected $operator;
+
+    /** @var mixed */
+    protected $rightExpr;
+
     /**
      * Creates a comparison expression with the given arguments.
      *
@@ -25,29 +34,40 @@ class Comparison
      * @param string $operator
      * @param mixed  $rightExpr
      */
-    public function __construct(protected $leftExpr, protected $operator, protected $rightExpr)
+    public function __construct($leftExpr, $operator, $rightExpr)
     {
+        $this->leftExpr  = $leftExpr;
+        $this->operator  = $operator;
+        $this->rightExpr = $rightExpr;
     }
 
-    /** @return mixed */
+    /**
+     * @return mixed
+     */
     public function getLeftExpr()
     {
         return $this->leftExpr;
     }
 
-    /** @return string */
+    /**
+     * @return string
+     */
     public function getOperator()
     {
         return $this->operator;
     }
 
-    /** @return mixed */
+    /**
+     * @return mixed
+     */
     public function getRightExpr()
     {
         return $this->rightExpr;
     }
 
-    /** @return string */
+    /**
+     * @return string
+     */
     public function __toString()
     {
         return $this->leftExpr . ' ' . $this->operator . ' ' . $this->rightExpr;

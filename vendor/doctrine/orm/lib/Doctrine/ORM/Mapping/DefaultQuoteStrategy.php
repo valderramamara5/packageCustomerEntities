@@ -20,7 +20,10 @@ class DefaultQuoteStrategy implements QuoteStrategy
 {
     use SQLResultCasing;
 
-    public function getColumnName(string $fieldName, ClassMetadata $class, AbstractPlatform $platform): string
+    /**
+     * {@inheritdoc}
+     */
+    public function getColumnName($fieldName, ClassMetadata $class, AbstractPlatform $platform)
     {
         return isset($class->fieldMappings[$fieldName]['quoted'])
             ? $platform->quoteIdentifier($class->fieldMappings[$fieldName]['columnName'])
@@ -32,12 +35,16 @@ class DefaultQuoteStrategy implements QuoteStrategy
      *
      * @todo Table names should be computed in DBAL depending on the platform
      */
-    public function getTableName(ClassMetadata $class, AbstractPlatform $platform): string
+    public function getTableName(ClassMetadata $class, AbstractPlatform $platform)
     {
         $tableName = $class->table['name'];
 
         if (! empty($class->table['schema'])) {
             $tableName = $class->table['schema'] . '.' . $class->table['name'];
+
+            if (! $platform->supportsSchemas() && $platform->canEmulateSchemas()) {
+                $tableName = $class->table['schema'] . '__' . $class->table['name'];
+            }
         }
 
         return isset($class->table['quoted'])
@@ -48,7 +55,7 @@ class DefaultQuoteStrategy implements QuoteStrategy
     /**
      * {@inheritdoc}
      */
-    public function getSequenceName(array $definition, ClassMetadata $class, AbstractPlatform $platform): string
+    public function getSequenceName(array $definition, ClassMetadata $class, AbstractPlatform $platform)
     {
         return isset($definition['quoted'])
             ? $platform->quoteIdentifier($definition['sequenceName'])
@@ -58,7 +65,7 @@ class DefaultQuoteStrategy implements QuoteStrategy
     /**
      * {@inheritdoc}
      */
-    public function getJoinColumnName(array $joinColumn, ClassMetadata $class, AbstractPlatform $platform): string
+    public function getJoinColumnName(array $joinColumn, ClassMetadata $class, AbstractPlatform $platform)
     {
         return isset($joinColumn['quoted'])
             ? $platform->quoteIdentifier($joinColumn['name'])
@@ -68,11 +75,8 @@ class DefaultQuoteStrategy implements QuoteStrategy
     /**
      * {@inheritdoc}
      */
-    public function getReferencedJoinColumnName(
-        array $joinColumn,
-        ClassMetadata $class,
-        AbstractPlatform $platform,
-    ): string {
+    public function getReferencedJoinColumnName(array $joinColumn, ClassMetadata $class, AbstractPlatform $platform)
+    {
         return isset($joinColumn['quoted'])
             ? $platform->quoteIdentifier($joinColumn['referencedColumnName'])
             : $joinColumn['referencedColumnName'];
@@ -81,12 +85,13 @@ class DefaultQuoteStrategy implements QuoteStrategy
     /**
      * {@inheritdoc}
      */
-    public function getJoinTableName(array $association, ClassMetadata $class, AbstractPlatform $platform): string
+    public function getJoinTableName(array $association, ClassMetadata $class, AbstractPlatform $platform)
     {
         $schema = '';
 
         if (isset($association['joinTable']['schema'])) {
-            $schema = $association['joinTable']['schema'] . '.';
+            $schema  = $association['joinTable']['schema'];
+            $schema .= ! $platform->supportsSchemas() && $platform->canEmulateSchemas() ? '__' : '.';
         }
 
         $tableName = $association['joinTable']['name'];
@@ -101,7 +106,7 @@ class DefaultQuoteStrategy implements QuoteStrategy
     /**
      * {@inheritdoc}
      */
-    public function getIdentifierColumnNames(ClassMetadata $class, AbstractPlatform $platform): array
+    public function getIdentifierColumnNames(ClassMetadata $class, AbstractPlatform $platform)
     {
         $quotedColumnNames = [];
 
@@ -120,7 +125,7 @@ class DefaultQuoteStrategy implements QuoteStrategy
                         ? $platform->quoteIdentifier($joinColumn['name'])
                         : $joinColumn['name'];
                 },
-                $joinColumns,
+                $joinColumns
             );
 
             $quotedColumnNames = array_merge($quotedColumnNames, $assocQuotedColumnNames);
@@ -129,12 +134,11 @@ class DefaultQuoteStrategy implements QuoteStrategy
         return $quotedColumnNames;
     }
 
-    public function getColumnAlias(
-        string $columnName,
-        int $counter,
-        AbstractPlatform $platform,
-        ClassMetadata|null $class = null,
-    ): string {
+    /**
+     * {@inheritdoc}
+     */
+    public function getColumnAlias($columnName, $counter, AbstractPlatform $platform, ?ClassMetadata $class = null)
+    {
         // 1 ) Concatenate column name and counter
         // 2 ) Trim the column alias to the maximum identifier length of the platform.
         //     If the alias is to long, characters are cut off from the beginning.

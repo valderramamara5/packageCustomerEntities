@@ -6,6 +6,7 @@ namespace Doctrine\ORM\Mapping;
 
 use Attribute;
 use Doctrine\Common\Annotations\Annotation\NamedArgumentConstructor;
+use Doctrine\Deprecations\Deprecation;
 
 /**
  * @Annotation
@@ -42,18 +43,26 @@ final class ManyToMany implements Annotation
     public $indexBy;
 
     /**
-     * @param class-string  $targetEntity
-     * @param string[]|null $cascade
+     * @param class-string|null $targetEntity
+     * @param string[]|null     $cascade
      */
     public function __construct(
-        string $targetEntity,
-        string|null $mappedBy = null,
-        string|null $inversedBy = null,
-        array|null $cascade = null,
+        ?string $targetEntity = null,
+        ?string $mappedBy = null,
+        ?string $inversedBy = null,
+        ?array $cascade = null,
         string $fetch = 'LAZY',
         bool $orphanRemoval = false,
-        string|null $indexBy = null,
+        ?string $indexBy = null
     ) {
+        if ($targetEntity === null) {
+            Deprecation::trigger(
+                'doctrine/orm',
+                'https://github.com/doctrine/orm/issues/8753',
+                'Passing no target entity is deprecated.'
+            );
+        }
+
         $this->targetEntity  = $targetEntity;
         $this->mappedBy      = $mappedBy;
         $this->inversedBy    = $inversedBy;

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Doctrine\ORM\Cache;
 
-use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Cache\Persister\CachedPersister;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\ClassMetadata;
@@ -19,18 +18,28 @@ use function assert;
  */
 class DefaultCollectionHydrator implements CollectionHydrator
 {
-    private readonly UnitOfWork $uow;
+    /** @var EntityManagerInterface */
+    private $em;
+
+    /** @var UnitOfWork */
+    private $uow;
 
     /** @var array<string,mixed> */
-    private static array $hints = [Query::HINT_CACHE_ENABLED => true];
+    private static $hints = [Query::HINT_CACHE_ENABLED => true];
 
-    public function __construct(
-        private readonly EntityManagerInterface $em,
-    ) {
+    /**
+     * @param EntityManagerInterface $em The entity manager.
+     */
+    public function __construct(EntityManagerInterface $em)
+    {
+        $this->em  = $em;
         $this->uow = $em->getUnitOfWork();
     }
 
-    public function buildCacheEntry(ClassMetadata $metadata, CollectionCacheKey $key, array|Collection $collection): CollectionCacheEntry
+    /**
+     * {@inheritdoc}
+     */
+    public function buildCacheEntry(ClassMetadata $metadata, CollectionCacheKey $key, $collection)
     {
         $data = [];
 
@@ -41,7 +50,10 @@ class DefaultCollectionHydrator implements CollectionHydrator
         return new CollectionCacheEntry($data);
     }
 
-    public function loadCacheEntry(ClassMetadata $metadata, CollectionCacheKey $key, CollectionCacheEntry $entry, PersistentCollection $collection): array|null
+    /**
+     * {@inheritdoc}
+     */
+    public function loadCacheEntry(ClassMetadata $metadata, CollectionCacheKey $key, CollectionCacheEntry $entry, PersistentCollection $collection)
     {
         $assoc           = $metadata->associationMappings[$key->association];
         $targetPersister = $this->uow->getEntityPersister($assoc['targetEntity']);
@@ -60,7 +72,7 @@ class DefaultCollectionHydrator implements CollectionHydrator
             $entity = $this->uow->createEntity(
                 $entityEntry->class,
                 $entityEntry->resolveAssociationEntries($this->em),
-                self::$hints,
+                self::$hints
             );
 
             $collection->hydrateSet($index, $entity);

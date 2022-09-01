@@ -15,7 +15,7 @@ use Doctrine\ORM\Query\Parser;
 use Doctrine\ORM\Query\ResultSetMapping;
 use Doctrine\ORM\QueryBuilder;
 use IteratorAggregate;
-use Traversable;
+use ReturnTypeWillChange;
 
 use function array_key_exists;
 use function array_map;
@@ -25,32 +25,44 @@ use function count;
 /**
  * The paginator can handle various complex scenarios with DQL.
  *
- * @template-covariant T
+ * @template T
  */
 class Paginator implements Countable, IteratorAggregate
 {
     use SQLResultCasing;
 
-    private readonly Query $query;
-    private bool|null $useOutputWalkers = null;
-    private int|null $count             = null;
+    /** @var Query */
+    private $query;
 
-    /** @param bool $fetchJoinCollection Whether the query joins a collection (true by default). */
-    public function __construct(
-        Query|QueryBuilder $query,
-        private readonly bool $fetchJoinCollection = true,
-    ) {
+    /** @var bool */
+    private $fetchJoinCollection;
+
+    /** @var bool|null */
+    private $useOutputWalkers;
+
+    /** @var int */
+    private $count;
+
+    /**
+     * @param Query|QueryBuilder $query               A Doctrine ORM query or query builder.
+     * @param bool               $fetchJoinCollection Whether the query joins a collection (true by default).
+     */
+    public function __construct($query, $fetchJoinCollection = true)
+    {
         if ($query instanceof QueryBuilder) {
             $query = $query->getQuery();
         }
 
-        $this->query = $query;
+        $this->query               = $query;
+        $this->fetchJoinCollection = (bool) $fetchJoinCollection;
     }
 
     /**
      * Returns the query.
+     *
+     * @return Query
      */
-    public function getQuery(): Query
+    public function getQuery()
     {
         return $this->query;
     }
@@ -60,15 +72,17 @@ class Paginator implements Countable, IteratorAggregate
      *
      * @return bool Whether the query joins a collection.
      */
-    public function getFetchJoinCollection(): bool
+    public function getFetchJoinCollection()
     {
         return $this->fetchJoinCollection;
     }
 
     /**
      * Returns whether the paginator will use an output walker.
+     *
+     * @return bool|null
      */
-    public function getUseOutputWalkers(): bool|null
+    public function getUseOutputWalkers()
     {
         return $this->useOutputWalkers;
     }
@@ -76,21 +90,30 @@ class Paginator implements Countable, IteratorAggregate
     /**
      * Sets whether the paginator will use an output walker.
      *
+     * @param bool|null $useOutputWalkers
+     *
      * @return $this
+     * @psalm-return static<T>
      */
-    public function setUseOutputWalkers(bool|null $useOutputWalkers): static
+    public function setUseOutputWalkers($useOutputWalkers)
     {
         $this->useOutputWalkers = $useOutputWalkers;
 
         return $this;
     }
 
-    public function count(): int
+    /**
+     * {@inheritdoc}
+     *
+     * @return int
+     */
+    #[ReturnTypeWillChange]
+    public function count()
     {
         if ($this->count === null) {
             try {
                 $this->count = (int) array_sum(array_map('current', $this->getCountQuery()->getScalarResult()));
-            } catch (NoResultException) {
+            } catch (NoResultException $e) {
                 $this->count = 0;
             }
         }
@@ -101,9 +124,11 @@ class Paginator implements Countable, IteratorAggregate
     /**
      * {@inheritdoc}
      *
-     * @psalm-return Traversable<array-key, T>
+     * @return ArrayIterator
+     * @psalm-return ArrayIterator<array-key, T>
      */
-    public function getIterator(): Traversable
+    #[ReturnTypeWillChange]
+    public function getIterator()
     {
         $offset = $this->query->getFirstResult();
         $length = $this->query->getMaxResults();

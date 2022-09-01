@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace Doctrine\ORM;
 
+use Doctrine\Deprecations\Deprecation;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use InvalidArgumentException;
-use Stringable;
 
 use function array_map;
 use function count;
+use function func_get_arg;
+use function func_num_args;
 use function get_debug_type;
 use function gettype;
 use function implode;
+use function method_exists;
 use function reset;
 use function spl_object_id;
 use function sprintf;
@@ -62,7 +65,7 @@ class ORMInvalidArgumentException extends InvalidArgumentException
     {
         return new self(
             "The given entity of type '" . $className . "' (" . self::objToStr($entity) . ') has no identity/no ' .
-            'id values set. It cannot be added to the identity map.',
+            'id values set. It cannot be added to the identity map.'
         );
     }
 
@@ -90,7 +93,7 @@ class ORMInvalidArgumentException extends InvalidArgumentException
 
                 return self::newEntityFoundThroughRelationshipMessage($associationMapping, $entity);
             },
-            $newEntitiesWithAssociations,
+            $newEntitiesWithAssociations
         );
 
         if (count($errorMessages) === 1) {
@@ -100,7 +103,7 @@ class ORMInvalidArgumentException extends InvalidArgumentException
         return new self(
             'Multiple non-persisted new entities were found through the given association graph:'
             . "\n\n * "
-            . implode("\n * ", $errorMessages),
+            . implode("\n * ", $errorMessages)
         );
     }
 
@@ -185,23 +188,38 @@ class ORMInvalidArgumentException extends InvalidArgumentException
             ' to be an entity object, ' . gettype($given) . ' given.');
     }
 
-    /** @return ORMInvalidArgumentException */
+    /**
+     * @return ORMInvalidArgumentException
+     */
     public static function invalidCompositeIdentifier()
     {
         return new self('Binding an entity with a composite primary key to a query is not supported. ' .
             'You should split the parameter into the explicit fields and bind them separately.');
     }
 
-    /** @return ORMInvalidArgumentException */
-    public static function invalidIdentifierBindingEntity(string $class)
+    /**
+     * @return ORMInvalidArgumentException
+     */
+    public static function invalidIdentifierBindingEntity(/* string $class */)
     {
+        if (func_num_args() === 0) {
+            Deprecation::trigger(
+                'doctrine/orm',
+                'https://github.com/doctrine/orm/pull/9642',
+                'Omitting the class name in the exception method %s is deprecated.',
+                __METHOD__
+            );
+
+            return new self('Binding entities to query parameters only allowed for entities that have an identifier.');
+        }
+
         return new self(sprintf(
             <<<'EXCEPTION'
 Binding entities to query parameters only allowed for entities that have an identifier.
 Class "%s" does not have an identifier.
 EXCEPTION
             ,
-            $class,
+            func_get_arg(0)
         ));
     }
 
@@ -220,20 +238,46 @@ EXCEPTION
             $expectedType,
             $assoc['sourceEntity'],
             $assoc['fieldName'],
-            get_debug_type($actualValue),
+            get_debug_type($actualValue)
         ));
     }
 
     /**
-     * Helper method to show an object as string.
+     * Used when a given entityName hasn't the good type
+     *
+     * @deprecated This method will be removed in 3.0.
+     *
+     * @param mixed $entityName The given entity (which shouldn't be a string)
+     *
+     * @return self
      */
-    private static function objToStr(object $obj): string
+    public static function invalidEntityName($entityName)
     {
-        return $obj instanceof Stringable ? (string) $obj : get_debug_type($obj) . '@' . spl_object_id($obj);
+        Deprecation::triggerIfCalledFromOutside(
+            'doctrine/orm',
+            'https://github.com/doctrine/orm/pull/9471',
+            '%s() is deprecated',
+            __METHOD__
+        );
+
+        return new self(sprintf('Entity name must be a string, %s given', get_debug_type($entityName)));
     }
 
-    /** @psalm-param array<string,string> $associationMapping */
-    private static function newEntityFoundThroughRelationshipMessage(array $associationMapping, object $entity): string
+    /**
+     * Helper method to show an object as string.
+     *
+     * @param object $obj
+     */
+    private static function objToStr($obj): string
+    {
+        return method_exists($obj, '__toString') ? (string) $obj : get_debug_type($obj) . '@' . spl_object_id($obj);
+    }
+
+    /**
+     * @param object $entity
+     * @psalm-param array<string,string> $associationMapping
+     */
+    private static function newEntityFoundThroughRelationshipMessage(array $associationMapping, $entity): string
     {
         return 'A new entity was found through the relationship \''
             . $associationMapping['sourceEntity'] . '#' . $associationMapping['fieldName'] . '\' that was not'
@@ -241,7 +285,7 @@ EXCEPTION
             . ' To solve this issue: Either explicitly call EntityManager#persist()'
             . ' on this unknown entity or configure cascade persist'
             . ' this association in the mapping for example @ManyToOne(..,cascade={"persist"}).'
-            . ($entity instanceof Stringable
+            . (method_exists($entity, '__toString')
                 ? ''
                 : ' If you cannot find out which entity causes the problem implement \''
                 . $associationMapping['targetEntity'] . '#__toString()\' to get a clue.'

@@ -35,10 +35,10 @@ final class DiscriminatorColumn implements Annotation
     public $columnDefinition;
 
     public function __construct(
-        string|null $name = null,
-        string|null $type = null,
-        int|null $length = null,
-        string|null $columnDefinition = null,
+        ?string $name = null,
+        ?string $type = null,
+        ?int $length = null,
+        ?string $columnDefinition = null
     ) {
         $this->name             = $name;
         $this->type             = $type;

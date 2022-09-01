@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Doctrine\ORM\Query\AST;
 
-use Doctrine\ORM\Query\SqlWalker;
-
 /**
  * Join ::= ["LEFT" ["OUTER"] | "INNER"] "JOIN" JoinAssociationPathExpression
  *          ["AS"] AliasIdentificationVariable [("ON" | "WITH") ConditionalExpression]
@@ -24,6 +22,9 @@ class Join extends Node
      */
     public $joinType = self::JOIN_TYPE_INNER;
 
+    /** @var Node|null */
+    public $joinAssociationDeclaration = null;
+
     /** @var ConditionalExpression|null */
     public $conditionalExpression = null;
 
@@ -32,13 +33,17 @@ class Join extends Node
      * @param Node $joinAssociationDeclaration
      * @psalm-param self::JOIN_TYPE_* $joinType
      */
-    public function __construct($joinType, public $joinAssociationDeclaration = null)
+    public function __construct($joinType, $joinAssociationDeclaration)
     {
-        $this->joinType = $joinType;
+        $this->joinType                   = $joinType;
+        $this->joinAssociationDeclaration = $joinAssociationDeclaration;
     }
 
-    public function dispatch(SqlWalker $walker): string
+    /**
+     * {@inheritdoc}
+     */
+    public function dispatch($sqlWalker)
     {
-        return $walker->walkJoin($this);
+        return $sqlWalker->walkJoin($this);
     }
 }

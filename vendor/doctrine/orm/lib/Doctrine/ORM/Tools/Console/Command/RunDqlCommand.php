@@ -27,7 +27,10 @@ use function strtoupper;
  */
 class RunDqlCommand extends AbstractEntityManagerCommand
 {
-    protected function configure(): void
+    /**
+     * {@inheritdoc}
+     */
+    protected function configure()
     {
         $this->setName('orm:run-dql')
              ->setDescription('Executes arbitrary DQL directly from the command line')
@@ -41,7 +44,12 @@ class RunDqlCommand extends AbstractEntityManagerCommand
              ->setHelp('Executes arbitrary DQL directly from the command line.');
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
+    /**
+     * {@inheritdoc}
+     *
+     * @return int
+     */
+    protected function execute(InputInterface $input, OutputInterface $output)
     {
         $ui = new SymfonyStyle($input, $output);
 
@@ -64,7 +72,7 @@ class RunDqlCommand extends AbstractEntityManagerCommand
         if (! defined($hydrationMode)) {
             throw new RuntimeException(sprintf(
                 "Hydration mode '%s' does not exist. It should be either: object. array, scalar or single-scalar.",
-                $hydrationModeName,
+                $hydrationModeName
             ));
         }
 

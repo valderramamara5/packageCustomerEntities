@@ -9,6 +9,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Criteria;
 use Doctrine\Common\Collections\Selectable;
 use Doctrine\ORM\Persisters\Entity\EntityPersister;
+use ReturnTypeWillChange;
 
 use function assert;
 
@@ -42,8 +43,11 @@ class LazyCriteriaCollection extends AbstractLazyCollection implements Selectabl
 
     /**
      * Do an efficient count on the collection
+     *
+     * @return int
      */
-    public function count(): int
+    #[ReturnTypeWillChange]
+    public function count()
     {
         if ($this->isInitialized()) {
             return $this->collection->count();

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Doctrine\ORM\Query\AST;
 
-use Doctrine\ORM\Query\SqlWalker;
-
 /**
  * SelectStatement = SelectClause FromClause [WhereClause] [GroupByClause] [HavingClause] [OrderByClause]
  *
@@ -13,6 +11,12 @@ use Doctrine\ORM\Query\SqlWalker;
  */
 class SelectStatement extends Node
 {
+    /** @var SelectClause */
+    public $selectClause;
+
+    /** @var FromClause */
+    public $fromClause;
+
     /** @var WhereClause|null */
     public $whereClause;
 
@@ -29,12 +33,17 @@ class SelectStatement extends Node
      * @param SelectClause $selectClause
      * @param FromClause   $fromClause
      */
-    public function __construct(public $selectClause, public $fromClause)
+    public function __construct($selectClause, $fromClause)
     {
+        $this->selectClause = $selectClause;
+        $this->fromClause   = $fromClause;
     }
 
-    public function dispatch(SqlWalker $walker): string
+    /**
+     * {@inheritdoc}
+     */
+    public function dispatch($sqlWalker)
     {
-        return $walker->walkSelectStatement($this);
+        return $sqlWalker->walkSelectStatement($this);
     }
 }

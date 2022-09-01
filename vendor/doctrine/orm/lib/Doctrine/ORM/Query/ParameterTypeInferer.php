@@ -22,14 +22,18 @@ use function is_int;
  *
  * @link    www.doctrine-project.org
  */
-final class ParameterTypeInferer
+class ParameterTypeInferer
 {
     /**
      * Infers type of a given value, returning a compatible constant:
      * - Type (\Doctrine\DBAL\Types\Type::*)
      * - Connection (\Doctrine\DBAL\Connection::PARAM_*)
+     *
+     * @param mixed $value Parameter value.
+     *
+     * @return int|string Parameter type constant.
      */
-    public static function inferType(mixed $value): ParameterType|int|string
+    public static function inferType($value)
     {
         if (is_int($value)) {
             return Types::INTEGER;
@@ -69,9 +73,5 @@ final class ParameterTypeInferer
         }
 
         return ParameterType::STRING;
-    }
-
-    private function __construct()
-    {
     }
 }

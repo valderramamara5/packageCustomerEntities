@@ -37,16 +37,23 @@ class FileLockRegion implements ConcurrentRegion
 {
     public const LOCK_EXTENSION = 'lock';
 
+    /** @var Region */
+    private $region;
+
+    /** @var string */
+    private $directory;
+
+    /** @psalm-var numeric-string */
+    private $lockLifetime;
+
     /**
-     * @param numeric-string|int $lockLifetime
+     * @param string         $directory
+     * @param numeric-string $lockLifetime
      *
      * @throws InvalidArgumentException
      */
-    public function __construct(
-        private readonly Region $region,
-        private readonly string $directory,
-        private readonly string|int $lockLifetime,
-    ) {
+    public function __construct(Region $region, $directory, $lockLifetime)
+    {
         if (! is_dir($directory) && ! @mkdir($directory, 0775, true)) {
             throw new InvalidArgumentException(sprintf('The directory "%s" does not exist and could not be created.', $directory));
         }
@@ -54,9 +61,13 @@ class FileLockRegion implements ConcurrentRegion
         if (! is_writable($directory)) {
             throw new InvalidArgumentException(sprintf('The directory "%s" is not writable.', $directory));
         }
+
+        $this->region       = $region;
+        $this->directory    = $directory;
+        $this->lockLifetime = $lockLifetime;
     }
 
-    private function isLocked(CacheKey $key, Lock|null $lock = null): bool
+    private function isLocked(CacheKey $key, ?Lock $lock = null): bool
     {
         $filename = $this->getLockFileName($key);
 
@@ -92,22 +103,34 @@ class FileLockRegion implements ConcurrentRegion
         return $this->directory . DIRECTORY_SEPARATOR . $key->hash . '.' . self::LOCK_EXTENSION;
     }
 
-    private function getLockContent(string $filename): string|false
+    /**
+     * @return string|false
+     */
+    private function getLockContent(string $filename)
     {
         return @file_get_contents($filename);
     }
 
-    private function getLockTime(string $filename): int|false
+    /**
+     * @return int|false
+     */
+    private function getLockTime(string $filename)
     {
         return @fileatime($filename);
     }
 
-    public function getName(): string
+    /**
+     * {@inheritdoc}
+     */
+    public function getName()
     {
         return $this->region->getName();
     }
 
-    public function contains(CacheKey $key): bool
+    /**
+     * {@inheritdoc}
+     */
+    public function contains(CacheKey $key)
     {
         if ($this->isLocked($key)) {
             return false;
@@ -116,7 +139,10 @@ class FileLockRegion implements ConcurrentRegion
         return $this->region->contains($key);
     }
 
-    public function get(CacheKey $key): CacheEntry|null
+    /**
+     * {@inheritdoc}
+     */
+    public function get(CacheKey $key)
     {
         if ($this->isLocked($key)) {
             return null;
@@ -125,7 +151,10 @@ class FileLockRegion implements ConcurrentRegion
         return $this->region->get($key);
     }
 
-    public function getMultiple(CollectionCacheEntry $collection): array|null
+    /**
+     * {@inheritdoc}
+     */
+    public function getMultiple(CollectionCacheEntry $collection)
     {
         if (array_filter(array_map([$this, 'isLocked'], $collection->identifiers))) {
             return null;
@@ -134,7 +163,10 @@ class FileLockRegion implements ConcurrentRegion
         return $this->region->getMultiple($collection);
     }
 
-    public function put(CacheKey $key, CacheEntry $entry, Lock|null $lock = null): bool
+    /**
+     * {@inheritdoc}
+     */
+    public function put(CacheKey $key, CacheEntry $entry, ?Lock $lock = null)
     {
         if ($this->isLocked($key, $lock)) {
             return false;
@@ -143,7 +175,10 @@ class FileLockRegion implements ConcurrentRegion
         return $this->region->put($key, $entry);
     }
 
-    public function evict(CacheKey $key): bool
+    /**
+     * {@inheritdoc}
+     */
+    public function evict(CacheKey $key)
     {
         if ($this->isLocked($key)) {
             @unlink($this->getLockFileName($key));
@@ -152,7 +187,10 @@ class FileLockRegion implements ConcurrentRegion
         return $this->region->evict($key);
     }
 
-    public function evictAll(): bool
+    /**
+     * {@inheritdoc}
+     */
+    public function evictAll()
     {
         // The check below is necessary because on some platforms glob returns false
         // when nothing matched (even though no errors occurred)
@@ -167,7 +205,10 @@ class FileLockRegion implements ConcurrentRegion
         return $this->region->evictAll();
     }
 
-    public function lock(CacheKey $key): Lock|null
+    /**
+     * {@inheritdoc}
+     */
+    public function lock(CacheKey $key)
     {
         if ($this->isLocked($key)) {
             return null;
@@ -185,7 +226,10 @@ class FileLockRegion implements ConcurrentRegion
         return $lock;
     }
 
-    public function unlock(CacheKey $key, Lock $lock): bool
+    /**
+     * {@inheritdoc}
+     */
+    public function unlock(CacheKey $key, Lock $lock)
     {
         if ($this->isLocked($key, $lock)) {
             return false;

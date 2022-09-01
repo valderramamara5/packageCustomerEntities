@@ -21,16 +21,20 @@ class SqrtFunction extends FunctionNode
     /** @var SimpleArithmeticExpression */
     public $simpleArithmeticExpression;
 
-    /** @inheritdoc */
+    /**
+     * @inheritdoc
+     */
     public function getSql(SqlWalker $sqlWalker)
     {
         return sprintf(
             'SQRT(%s)',
-            $sqlWalker->walkSimpleArithmeticExpression($this->simpleArithmeticExpression),
+            $sqlWalker->walkSimpleArithmeticExpression($this->simpleArithmeticExpression)
         );
     }
 
-    /** @inheritdoc */
+    /**
+     * @inheritdoc
+     */
     public function parse(Parser $parser)
     {
         $parser->match(Lexer::T_IDENTIFIER);

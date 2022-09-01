@@ -26,7 +26,10 @@ use function sprintf;
  */
 class GenerateProxiesCommand extends AbstractEntityManagerCommand
 {
-    protected function configure(): void
+    /**
+     * {@inheritdoc}
+     */
+    protected function configure()
     {
         $this->setName('orm:generate-proxies')
              ->setAliases(['orm:generate:proxies'])
@@ -37,7 +40,12 @@ class GenerateProxiesCommand extends AbstractEntityManagerCommand
              ->setHelp('Generates proxy classes for entity classes.');
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output): int
+    /**
+     * {@inheritdoc}
+     *
+     * @return int
+     */
+    protected function execute(InputInterface $input, OutputInterface $output)
     {
         $ui = new SymfonyStyle($input, $output);
 
@@ -64,13 +72,13 @@ class GenerateProxiesCommand extends AbstractEntityManagerCommand
 
         if (! file_exists($destPath)) {
             throw new InvalidArgumentException(
-                sprintf("Proxies destination directory '<info>%s</info>' does not exist.", $em->getConfiguration()->getProxyDir()),
+                sprintf("Proxies destination directory '<info>%s</info>' does not exist.", $em->getConfiguration()->getProxyDir())
             );
         }
 
         if (! is_writable($destPath)) {
             throw new InvalidArgumentException(
-                sprintf("Proxies destination directory '<info>%s</info>' does not have write permissions.", $destPath),
+                sprintf("Proxies destination directory '<info>%s</info>' does not have write permissions.", $destPath)
             );
         }
 

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Doctrine\ORM\Query\AST;
 
-use Doctrine\ORM\Query\SqlWalker;
-
 /**
  * UpdateClause ::= "UPDATE" AbstractSchemaName [["AS"] AliasIdentificationVariable] "SET" UpdateItem {"," UpdateItem}*
  *
@@ -13,6 +11,9 @@ use Doctrine\ORM\Query\SqlWalker;
  */
 class UpdateClause extends Node
 {
+    /** @var string */
+    public $abstractSchemaName;
+
     /** @var string */
     public $aliasIdentificationVariable;
 
@@ -23,13 +24,17 @@ class UpdateClause extends Node
      * @param string  $abstractSchemaName
      * @param mixed[] $updateItems
      */
-    public function __construct(public $abstractSchemaName, array $updateItems)
+    public function __construct($abstractSchemaName, array $updateItems)
     {
-        $this->updateItems = $updateItems;
+        $this->abstractSchemaName = $abstractSchemaName;
+        $this->updateItems        = $updateItems;
     }
 
-    public function dispatch(SqlWalker $walker): string
+    /**
+     * {@inheritdoc}
+     */
+    public function dispatch($sqlWalker)
     {
-        return $walker->walkUpdateClause($this);
+        return $sqlWalker->walkUpdateClause($this);
     }
 }
